@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <wchar.h>
 // TODO: make a clang tidy lmao
+// TODO: Look at error codes in the C/GNU way thinking emoji
 
 /// Our node data type for the trie
 struct dodoTrieNode
@@ -31,9 +32,9 @@ dodo_trie_init()
     return node;
 };
 
-/// Find the children node with the character we are looking for
 // MORSEL: The function strstr from libc <string.h> header takes 2 parameters:
 //  a const char* called haystack and a const char* called needle
+/// Find the children node with the character we are looking for
 struct dodoTrieNode*
 dodo_find_child(struct dodoTrieNode* node, const wchar_t c)
 {
@@ -43,7 +44,11 @@ dodo_find_child(struct dodoTrieNode* node, const wchar_t c)
     }
     for (size_t i = 0; i < node->count; i++)
     {
+        // recursive?
+        if (node->children[i]->c == c) return node->children[i];
     }
+    // If we don't find anything
+    return nullptr;
 }
 
 // XXX: Less verbose?
