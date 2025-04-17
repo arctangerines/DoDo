@@ -24,8 +24,8 @@ struct dodoTrieNode*
 dodo_trie_init()
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
-    /// What the hell, sure
-    node->c        = '\0';
+    /// STX control character because I think \0 is confusing
+    node->c        = 0x02;
     node->children = nullptr;
     node->count    = 0;
 
@@ -53,6 +53,7 @@ dodo_find_child(struct dodoTrieNode* node, const wchar_t c)
 
 // XXX: Less verbose?
 /// Add a keyword to the trie
+/// @param node: We NEED the node parameter to be the root of the tree
 /// @param keyword: Our string
 /// @param keyword_len: Pointers decay
 // THINK: Change node var to root?
@@ -68,8 +69,28 @@ dodo_trie_add(struct dodoTrieNode* node, const wchar_t* keyword,
     // What happens if one of the two is not set right? lol
     for (size_t j = 0; keyword[j] != '\0'; j++)
     {
-        if (keyword[j] == a_node->c)
+        if (keyword[j] == a_node->c && keyword[j + 1] != '\0')
         {
+            // Backup node?
+            struct dodoTrieNode* b_node = dodo_find_child(a_node, keyword[j+1]);
+            // Actually gotta stop and think cuz I need to organize this search
+            // I could do keyword[j+1] or work with conditionals/loops better
+            if ( b_node != nullptr)
+            {
+                //... Then we continue from that node
+                a_node = b_node;
+            }
+            // We try to find the children, and we assign a_node to this new
+            // pointer
+            else
+            {
+                //... Then we insert making a new branch
+                // NOTE: This function needs to insert only looking down at the tree
+            }
+        }
+        else if (keyword[j] != a_node->c)
+        {
+            //... Then we make a new branch for our tree, easy
         }
     }
     for (size_t i = 0; i < keyword_len; i++)
