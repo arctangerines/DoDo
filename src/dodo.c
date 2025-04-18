@@ -19,24 +19,49 @@ struct dodoTrieNode
 
 // TODO: Maybe add a system to track nodes on the whole tree
 
+/*MORSEL: So we have this concept of the comma operator, its an operator,
+ * just like the other operators (lol)
+ * when we separate expressions (1,2,3) or (a,b,c), it always returns the
+ * last expression, in this case 3 or c, respectively
+ * BUT, all expressions are evaluated
+ */
+
+/*
+ * Soooo, these 2 macros work together, leveraging the variadic macros,
+ * to create a default value for the funciton parameters
+ * So the dodo_trie_init macro, if its empty it'll expand to:
+ * dodo_trie_init(leading_var(0x02))
+ * And leading_var always returns the first parameter so it's just 0x02
+ * but if there is a value, it expandes to
+ * dodo_trie_init(leading_var(x, 0x02))
+ * and leading_var always return the first value, we can put in as many values
+ * as we want but it will always return the first value in the (a,b) comma
+ * separated expression
+ */
+/// Selects the first variable and discards the rest
+#define leading_var(x, ...) x
+/// @param c: Char we want to initialize the node with, if empty it'll create a
+/// root node, and we do not want that unless we starting a new tree
+#define dodo_trie_init(...)                                                    \
+    dodo_trie_init(leading_var(__VA_ARGS__ __VA_OPT__(, ) 0x02))
 /// Returns a new node for our trie
 struct dodoTrieNode*
-dodo_trie_init()
+dodo_trie_init(const wchar_t c)
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
     /// STX control character because I think \0 is confusing
-    node->c        = 0x02;
+    node->c        = c;
     node->children = nullptr;
     node->count    = 0;
 
     return node;
 };
 
-// MORSEL: The function strstr from libc <string.h> header takes 2 parameters:
+// MORSEL: The function strstr from libc's <string.h> header takes 2 parameters:
 //  a const char* called haystack and a const char* called needle
 /// Find the children node with the character we are looking for
 struct dodoTrieNode*
-dodo_find_child(struct dodoTrieNode* node, const wchar_t c)
+dodo_trie_find_child(struct dodoTrieNode* node, const wchar_t c)
 {
     if (node->count == 0)
     {
@@ -72,10 +97,11 @@ dodo_trie_add(struct dodoTrieNode* node, const wchar_t* keyword,
         if (keyword[j] == a_node->c && keyword[j + 1] != '\0')
         {
             // Backup node?
-            struct dodoTrieNode* b_node = dodo_find_child(a_node, keyword[j+1]);
+            struct dodoTrieNode* b_node =
+                dodo_trie_find_child(a_node, keyword[j + 1]);
             // Actually gotta stop and think cuz I need to organize this search
             // I could do keyword[j+1] or work with conditionals/loops better
-            if ( b_node != nullptr)
+            if (b_node != nullptr)
             {
                 //... Then we continue from that node
                 a_node = b_node;
@@ -85,7 +111,8 @@ dodo_trie_add(struct dodoTrieNode* node, const wchar_t* keyword,
             else
             {
                 //... Then we insert making a new branch
-                // NOTE: This function needs to insert only looking down at the tree
+                // NOTE: This function needs to insert only looking down at the
+                // tree
             }
         }
         else if (keyword[j] != a_node->c)
