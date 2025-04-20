@@ -8,7 +8,9 @@
 // TODO: make a clang tidy lmao
 // TODO: Look at error codes in the C/GNU way thinking emoji
 
-// XXX: We could alloc a default array of n length for @children
+// TODO: Consider renaming functions we dont want user (me?) to call like dodo_trie_destroy_children
+
+// TODO: We could alloc a default array of n length for @children
 //  so the count is exclusively for the amount of nodes and
 //  we add another variable that keeps track of the actual length of the
 //  array allowing us to allocate less
@@ -17,13 +19,14 @@ struct dodoTrieNode
 {
     /// My data!
     wchar_t c;
+    /// Having this variable allows for checking if the nodes have been removed
+    /// but the array hasn't been dealloced
+    bool _children_alloced;
     /// Pointer(array) to a pointer (data) of all our children nodes
     struct dodoTrieNode** children;
     /// Amount of nodes.
     size_t count;
 };
-
-// TODO: Maybe add a system to track nodes on the whole tree
 
 /*MORSEL: In C and other languages, I guess, we have this concept of the comma
  * operator, its an operator, just like the other operators (lol) when we
@@ -39,12 +42,13 @@ dodo_make_trie()
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
     /// STX control character because I think \0 is confusing
-    node->c        = 0x02;
-    node->children = nullptr;
-    node->count    = 0;
+    node->c                 = 0x02;
+    node->_children_alloced = false;
+    node->children          = nullptr;
+    node->count             = 0;
 
     return node;
-};
+}
 
 struct dodoTrieNode*
 dodo_make_tnode(const wchar_t c)
@@ -82,6 +86,12 @@ dodo_trie_find_child(struct dodoTrieNode* node, const wchar_t c)
 struct dodoTrieNode*
 dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
 {
+    // not a valid character to insert
+    if (c == 0x02)
+    {
+        wprintf(L"Error: 0x02 is not a valid character for keywords.");
+        exit(-1);
+    }
     struct dodoTrieNode* a_node = node;
     struct dodoTrieNode* b_node = nullptr;
     if (a_node->count != 0)
@@ -96,7 +106,7 @@ dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
                         sizeof(struct dodoTrieNode**) * (a_node->count));
             if (a_child == NULL)
             {
-                printf("Error %i: %s", errno, strerror(errno));
+                wprintf(L"Error %i: %hs", errno, strerror(errno));
                 exit(errno);
             }
             a_node->children                    = a_child;
@@ -107,8 +117,10 @@ dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
         return b_node;
     }
     // stupid
-    a_node->children    = malloc(sizeof(struct dodoTrieNode**));
-    a_node->children[0] = dodo_make_tnode(c);
+    a_node->children          = malloc(sizeof(struct dodoTrieNode**));
+    a_node->children[0]       = dodo_make_tnode(c);
+    a_node->_children_alloced = true;
+    a_node->count += 1;
     return a_node->children[0];
 }
 
@@ -126,7 +138,7 @@ dodo_trie_add_keyword(struct dodoTrieNode* node, const wchar_t* keyword)
 }
 
 void
-dodo_destroy_children(struct dodoTrieNode* node)
+dodo_trie_destroy_children(struct dodoTrieNode* node)
 {
     if (node->count != 0)
     {
@@ -139,17 +151,33 @@ dodo_destroy_children(struct dodoTrieNode* node)
     free(node);
 }
 
+/// Here we find the deepest node and then start returning from that
+/// Return the deepest node that contains nodes that dont have any other
+/// subnodes
+/// Should I be lazy and make dig delete things or just return things
 void
-dodo_destroy_trie(struct dodoTrieNode* node)
+dodo_trie_destroy(struct dodoTrieNode* node)
 {
-    struct dodoTrieNode* a_node = node;
-    while (a_node->count != 0)
+    // copy of our count so we can subtract from node->count
+    size_t count = node->count;
+    if (node->count != 0)
     {
-        for (size_t j = 0; j < a_node->count; j++)
+        for (size_t j = 0; j < count; j++)
         {
-            //... I think I need to implement a dig function thats recursive that
-            // just digs and digs
+            if (node->children[j]->count != 0)
+            {
+                dodo_trie_destroy(node->children[j]);
+            }
+            node->count -= 1;
+            free(node->children[j]);
         }
+        if (node->count == 0 && node->_children_alloced) free(node->children);
+    }
+    // XXX: ?
+    //  Checking if NOW we can delete root
+    if (node->c == 0x02 && node->count == 0)
+    {
+        free(node);
     }
 }
 
@@ -163,8 +191,15 @@ main(int argc, char** argv)
 {
     /// Portable locale lolz
     setlocale(LC_ALL, "");
-    wchar_t* x = L"Hello";
-    wprintf(L"Stop it: %ls", x);
+
+    struct dodoTrieNode* cool_trie = dodo_make_trie();
+    dodo_trie_add_keyword(cool_trie, L"TODO");
+    dodo_trie_add_keyword(cool_trie, L"FIXME");
+    dodo_trie_add_keyword(cool_trie, L"XXX");
+    dodo_trie_add_keyword(cool_trie, L"BUG");
+    dodo_trie_add_keyword(cool_trie, L"THINK");
+
+    dodo_trie_destroy(cool_trie);
     return 0;
     FILE* f = fopen("./test.py", "r");
     /*NOTE: Cool thing about wchars

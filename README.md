@@ -2,6 +2,9 @@
 
 ToDo manager
 
+# Short term goals
+* Implement config file parser
+
 # Goals
 
 * list TODOs in a project
