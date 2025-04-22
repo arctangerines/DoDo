@@ -11,6 +11,17 @@
 #include <wchar.h>
 #include <wordexp.h>
 
+struct commentKeys
+{
+    wchar_t** exts;
+    wchar_t** keys;
+};
+
+void
+ck_add_key(struct commentKeys* ck)
+{
+}
+
 // TODO: Look at error codes in the C/GNU way thinking emoji
 // FIXME: Document this function;
 int
@@ -162,6 +173,8 @@ main(int argc, char** argv)
     dodo_trie_add_keyword(cool_trie, L"🧬");
 
     FILE* test_file = fopen("test.py", "r");
+    char* ext       = strrchr("test.py", '.');
+    wprintf(L"Extension: %hs", ext);
 
     /*MORSEL: Cool thing about wchars
      * UTF-8 is compatible with regular chars
@@ -185,6 +198,7 @@ main(int argc, char** argv)
          * so if its py it knows what comments to use
          */
         wprintf(L"%lc", x);
+        if (x > 32) wprintf(L"valid");
     }
     fclose(test_file);
 
