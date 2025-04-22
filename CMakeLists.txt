@@ -23,6 +23,10 @@ set(CMAKE_BUILD_TYPE Debug)
 
 SET(SRCS
         src/dodo.c
+        src/term_colors.h
+        src/trie.h
+        src/trie.c
+        src/trie.h
 )
 
 add_executable(dodo ${SRCS})

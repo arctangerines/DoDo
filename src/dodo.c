@@ -1,238 +1,137 @@
+#include "term_colors.h"
+#include "trie.h"
+
 #include <errno.h>
 #include <locale.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <wchar.h>
-// TODO: make a clang tidy lmao
+#include <wordexp.h>
+
 // TODO: Look at error codes in the C/GNU way thinking emoji
-
-// TODO: Consider renaming functions we dont want user (me?) to call like
-// dodo_trie_destroy_children
-
-// TODO: We could alloc a default array of n length for @children
-//  so the count is exclusively for the amount of nodes and
-//  we add another variable that keeps track of the actual length of the
-//  array allowing us to allocate less
-// XXX: A space optimized version of a trie
-// would be with pointers instead of wchar_t?
-/// Our node data type for the trie
-struct dodoTrieNode
+// FIXME: Document this function;
+int
+create_config_files()
 {
-    /// My data!
-    wchar_t c;
-    /// Having this variable allows for checking if the nodes have been removed
-    /// but the array hasn't been dealloced
-    bool _children_alloced;
-    /// Pointer(array) to a pointer (data) of all our children nodes
-    struct dodoTrieNode** children;
-    /// Amount of nodes.
-    size_t count;
-};
-
-/// @param p: Pointer to the allocated memory
-/// @param h: If set to 'q' we panic because of the error,
-/// if set to 'c' we continue
-void
-mem_error_handling(void* p, const wchar_t h)
-{
-    if (p == NULL)
+    // TODO: Get environment variable for XDG_CONFIG_HOME
+    char* conf_dir_env_path = getenv("XDG_CONFIG_HOME");
+    if (conf_dir_env_path)
     {
+        char* conf_dodo = "/dodo";
+        char* conf_file = "/dodofile";
 
-        wprintf(L"Error %i: %hs", errno, strerror(errno));
-        // I think that 2 if statements looks better but switch literally
-        // made for these situations
-        switch (h)
+        struct stat conf_dir_env_stat;
+        if (stat(conf_dir_env_path, &conf_dir_env_stat) == -1)
         {
-        case 'c':
-        {
-            wprintf(L"Continuing...");
-            break;
-        }
-        case 'q':
-        {
-            exit(errno);
-            break;
-        }
-        default:
-            wprintf(L"Continuing...");
-        }
-    }
-}
-
-/*MORSEL: In C and other languages, I guess, we have this concept of the comma
- * operator, its an operator, just like the other operators (lol) when we
- * separate expressions (1,2,3) or (a,b,c), it always returns the last
- * expression, in this case 3 or c, respectively BUT, all expressions are
- * evaluated
- */
-
-/// Returns a starting node for our trie,
-/// the root node always has the value 0x02
-struct dodoTrieNode*
-dodo_make_trie()
-{
-    struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
-    mem_error_handling(node, 'q');
-    /// STX control character because I think \0 is confusing
-    node->c                 = 0x02;
-    node->_children_alloced = false;
-    node->children          = nullptr;
-    node->count             = 0;
-
-    return node;
-}
-
-/// Function to make a node with a char we specify
-struct dodoTrieNode*
-dodo_make_tnode(const wchar_t c)
-{
-    struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
-    mem_error_handling(node, 'q');
-    /// STX control character because I think \0 is confusing
-    node->c = c;
-    // XXX: Look at the XXX on top of the dodoTrieNode definition
-    node->children = nullptr;
-    node->count    = 0;
-
-    return node;
-}
-
-// MORSEL: The function strstr from libc's <string.h> header takes 2 parameters:
-//  a const char* called haystack and a const char* called needle
-/// Find the children node with the character we are looking for
-struct dodoTrieNode*
-dodo_trie_find_child(struct dodoTrieNode* node, const wchar_t c)
-{
-    // If its empty, theres no children
-    if (node->count == 0)
-    {
-        return nullptr;
-    }
-    // Loop through our children nodes
-    for (size_t i = 0; i < node->count; i++)
-    {
-        if (node->children[i]->c == c) return node->children[i];
-    }
-    // If we don't find anything
-    return nullptr;
-}
-
-/// This functions inserts 1 char into the nodes below the one we pass,
-/// and then returns said node we just inserted
-struct dodoTrieNode*
-dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
-{
-    // not a valid character to insert since it's our character for root of the
-    // trie
-    if (c == 0x02)
-    {
-        wprintf(L"Error: 0x02 is not a valid character for keywords.");
-        exit(-1);
-    }
-    // Arbitrary node
-    struct dodoTrieNode* a_node = node;
-    // Backup node so we dont shadow a_node if we were to use it
-    struct dodoTrieNode* b_node = nullptr;
-    // We check if there are children nodes
-    if (a_node->count != 0)
-    {
-        // First we try to check that the node is not there already
-        b_node = dodo_trie_find_child(a_node, c);
-        // No children node has our wchar so we need to add it
-        if (b_node == nullptr)
-        {
-            // Expand the size of the array
-            a_node->count += 1;
-            // Realloc to expand, but this is up
-            struct dodoTrieNode** a_child =
-                realloc(a_node->children,
-                        sizeof(struct dodoTrieNode**) * (a_node->count));
-            // Error handling
-            // Should we add a perror handling function
-            mem_error_handling(a_child, 'q');
-            a_node->children                    = a_child;
-            struct dodoTrieNode* c_node         = dodo_make_tnode(c);
-            a_node->children[a_node->count - 1] = c_node;
-            return c_node;
-        }
-        return b_node;
-    }
-    // stupid
-    a_node->children = malloc(sizeof(struct dodoTrieNode**));
-    mem_error_handling(a_node->children, 'q');
-    a_node->children[0]       = dodo_make_tnode(c);
-    a_node->_children_alloced = true;
-    a_node->count += 1;
-    return a_node->children[0];
-}
-
-/// This function let's us add a keyword to the tree
-void
-dodo_trie_add_keyword(struct dodoTrieNode* node, const wchar_t* keyword)
-{
-    // Arbitrary node, on this one we will store the node on top of the one we
-    // will insert
-    struct dodoTrieNode* a_node = node;
-    for (size_t j = 0; keyword[j] != '\0'; j++)
-    {
-        // Function returns the node that we have to continue inserting from
-        a_node = dodo_trie_insert(a_node, keyword[j]);
-    }
-}
-
-/// This function destroys the children nodes and the node itself we passed
-/// No questions asked, it will just free everything basically
-void
-dodo_trie_destroy_node(struct dodoTrieNode* node)
-{
-    // Check for children
-    if (node->count != 0)
-    {
-        // Loop through them destroying
-        for (size_t j = 0; j < node->count; j--)
-        {
-            free(node->children[j]);
-        }
-        // Free the array
-        free(node->children);
-    }
-    free(node);
-}
-
-/// Here we find the deepest node and then start returning from that
-/// Return the deepest node that contains nodes that don't have any other
-/// subnodes
-/// Should I be lazy and make dig delete things or just return things
-void
-dodo_trie_destroy(struct dodoTrieNode* node)
-{
-    // copy of our count so we can subtract from node->count
-    size_t count = node->count;
-    // Check if there are any children
-    if (node->count != 0)
-    {
-        for (size_t j = 0; j < count; j++)
-        {
-            // If the child node has children we need to keep digging
-            if (node->children[j]->count != 0)
+            if (errno == ENOENT)
             {
-                dodo_trie_destroy(node->children[j]);
+                mkdir(conf_dir_env_path, 0700);
+                wprintf(L"Creating XDG config directory...\n");
             }
-            // finally reduce and free
-            node->count -= 1;
-            free(node->children[j]);
         }
-        // Since the value of count gets updated recursively
-        // we need to check again so we can free the array
-        if (node->count == 0 && node->_children_alloced) free(node->children);
+        size_t env_path_len = strlen(conf_dir_env_path);
+
+        // +1 for our '\0'
+        size_t n = strlen(conf_dodo) + env_path_len + strlen(conf_file) + 1;
+        char*  conf_dodo_path;
+        conf_dodo_path = malloc(sizeof(char) * n);
+        // This is important because '\0' is gonna replace what we got at the
+        // end of the destination string, and in this case
+        // that is the destination string, so it needs to be initialized
+        conf_dodo_path[0] = '\0';
+        strncat(conf_dodo_path, conf_dir_env_path, env_path_len);
+        strncat(conf_dodo_path, conf_dodo, strlen(conf_dodo));
+
+        if (stat(conf_dodo_path, &conf_dir_env_stat) == -1)
+        {
+            if (errno == ENOENT)
+            {
+                mkdir(conf_dodo_path, 0700);
+                wprintf(L"Creating dodo folder in XDG config directory...\n");
+            }
+        }
+        strncat(conf_dodo_path, conf_file, strlen(conf_file));
+        if (stat(conf_dodo_path, &conf_dir_env_stat) == -1)
+        {
+            if (errno == ENOENT)
+            {
+                fclose(fopen(conf_dodo_path, "a+"));
+                wprintf(L"Creating dodofile\n");
+            }
+        }
+
+        free(conf_dodo_path);
+        return 0;
     }
-    //  Checking if NOW we can delete root
-    if (node->c == 0x02 && node->count == 0)
+    // SECTION: Without XDG_CONFIG_HOME
+    // FIXME: Please stop using so many variables, fix this NEOW
+    wordexp_t p;
+    char*     conf_dir_tilde = "~/.config";
+    if (wordexp(conf_dir_tilde, &p, 0) == -1)
     {
-        free(node);
+        wprintf(L"We couldn't expand\n");
+        return -1;
     }
+    char* conf_dir;
+    conf_dir = p.we_wordv[0];
+
+    struct stat conf_dir_stat;
+    if (stat(conf_dir, &conf_dir_stat) == -1)
+    {
+        wprintf(L"Couldn't stat user config directory.\n");
+        if (errno == ENOENT)
+        {
+            mkdir(conf_dir, 0700);
+            wprintf(L"Creating home config directory...\n");
+        }
+        else
+            return -1;
+    }
+
+    wordexp_t q;
+    char*     conf_dir_full_tilde = "~/.config/dodo";
+    if (wordexp(conf_dir_full_tilde, &q, 0) == -1)
+    {
+        wprintf(L"We couldn't expand\n");
+        return -1;
+    }
+    char* conf_dir_full;
+    conf_dir_full = q.we_wordv[0];
+    struct stat conf_dir_full_stat;
+    if (stat(conf_dir_full, &conf_dir_full_stat) == -1)
+    {
+        if (errno == ENOENT)
+        {
+            mkdir(conf_dir_full, 0700);
+            wprintf(L"Creating...\n");
+        }
+        else
+            return -1;
+    }
+
+    wordexp_t w;
+    char*     conf_file_path = "~/.config/dodo/dodofile";
+    if (wordexp(conf_file_path, &w, 0) == -1)
+    {
+        wprintf(L"We couldn't expand\n");
+        return -1;
+    }
+    char*       conf_file = w.we_wordv[0];
+    struct stat conf_file_stat;
+    if (stat(conf_file, &conf_file_stat) == -1)
+    {
+        if (errno == ENOENT)
+        {
+            // This is really really really bad but it makes me laugh
+            fclose(fopen(conf_file, "a+"));
+        }
+        else
+            return -1;
+    }
+    return 0;
 }
 
 /*WARNING: I'm going to be leaking memory all over the place because
@@ -243,8 +142,16 @@ dodo_trie_destroy(struct dodoTrieNode* node)
 int
 main(int argc, char** argv)
 {
+    FILE* config_file = fopen("./testfig/dodofile", "a+");
+
     /// Portable locale lolz
     setlocale(LC_ALL, "");
+
+    if (create_config_files() == -1)
+    {
+        wprintf(L"Error %i: %hs", errno, strerror(errno));
+        exit(errno);
+    }
 
     struct dodoTrieNode* cool_trie = dodo_make_trie();
     dodo_trie_add_keyword(cool_trie, L"TODO");
@@ -254,10 +161,9 @@ main(int argc, char** argv)
     dodo_trie_add_keyword(cool_trie, L"THINK");
     dodo_trie_add_keyword(cool_trie, L"🧬");
 
-    dodo_trie_destroy(cool_trie);
-    return 0;
-    FILE* f = fopen("./test.py", "r");
-    /*NOTE: Cool thing about wchars
+    FILE* test_file = fopen("test.py", "r");
+
+    /*MORSEL: Cool thing about wchars
      * UTF-8 is compatible with regular chars
      * thats because chars are 8 bits
      * but we never use the first bit
@@ -269,27 +175,19 @@ main(int argc, char** argv)
      * needs to be handled like a multibyte sequence or like ASCII
      * "I can't believe it's not ASCII!"
      */
-    wint_t c;
-    while ((c = fgetwc(f)) != WEOF)
+    wint_t x;
+    while ((x = (fgetwc(test_file))) != WEOF)
     {
-        wprintf(L"%lc", c);
-        if (c == 'T')
-        {
-            wprintf(L"\nBlam!\n");
-            /*TODO: So when we find a letter that we want (like the T in TODO,
-             * we want to start checking what comes after it
-             * so we need to save our fseek position and check the next few
-             * letters so we check for an O, D and O. But what if we want to do
-             * this for other keywords, like
-             * FIXME, NOTE, BUG, XXX
-             * we need a structure that can hold every letter we need in an
-             * ordered way and that we can go down of as we match and discard oh
-             * wait a second, that's a trie lmao 🧠
-             */
-            // XXX: For now this will break when we find the word, but
-            //  later it will break when we find the end of the tree (?)
-        }
-        // outer:
+        /* The way we implement this should be that when we
+         * finally find a letter we are looking for we save the position, so we
+         * can check.
+         * Perhaps this should be filetype compatible thonk
+         * so if its py it knows what comments to use
+         */
+        wprintf(L"%lc", x);
     }
-    fclose(f);
+    fclose(test_file);
+
+    dodo_trie_destroy(cool_trie);
+    return 0;
 }
