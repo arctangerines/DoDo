@@ -1,6 +1,12 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.30)
 
 project(dodo C)
+
+include(FetchContent)
+FetchContent_Declare(silky
+        GIT_REPOSITORY https://github.com/arctangerines/silky.git
+        GIT_TAG dev)
+FetchContent_MakeAvailable(silky)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
 if (CMAKE_EXPORT_COMPILE_COMMANDS)
@@ -21,12 +27,13 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -Wall -Wextra -Wpedantic -fdiagnostics-col
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wextra -Wpedantic -fdiagnostics-color=always")
 set(CMAKE_BUILD_TYPE Debug)
 
+include_directories(src)
 SET(SRCS
         src/dodo.c
         src/term_colors.h
         src/trie.h
         src/trie.c
-        src/trie.h
 )
 
 add_executable(dodo ${SRCS})
+target_link_libraries(dodo PRIVATE silky)
