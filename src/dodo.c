@@ -172,12 +172,12 @@ main(int argc, char** argv)
     }
 
     struct dodoTrieNode* cool_trie = dodo_make_trie();
-    dodo_trie_add_keyword(cool_trie, L"TODO");
-    dodo_trie_add_keyword(cool_trie, L"FIXME");
-    dodo_trie_add_keyword(cool_trie, L"XXX");
-    dodo_trie_add_keyword(cool_trie, L"BUG");
-    dodo_trie_add_keyword(cool_trie, L"THINK");
-    dodo_trie_add_keyword(cool_trie, L"🧬");
+    dodo_trie_add_keyword(cool_trie, "TODO");
+    dodo_trie_add_keyword(cool_trie, "FIXME");
+    dodo_trie_add_keyword(cool_trie, "XXX");
+    dodo_trie_add_keyword(cool_trie, "BUG");
+    dodo_trie_add_keyword(cool_trie, "THINK");
+    // dodo_trie_add_keyword(cool_trie, "🧬");
 
     FILE* test_file = fopen("test.py", "r");
     char* ext       = strrchr("test.py", '.');
