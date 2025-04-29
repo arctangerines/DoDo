@@ -6,49 +6,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <wchar.h>
-#include <wordexp.h>
+#include <trie.h>
 
 // TODO: Consider renaming functions we dont want user (me?) to call like
 // dodo_trie_destroy_children
-
-// TODO: We could alloc a default array of n length for @children
-//  so the count is exclusively for the amount of nodes and
-//  we add another variable that keeps track of the actual length of the
-//  array allowing us to allocate less
-// XXX: A space optimized version of a trie
-// would be with pointers instead of wchar_t?
-/// Our node data type for the trie
-struct dodoTrieNode
-{
-    /// My data!
-    wchar_t c;
-    /// Having this variable allows for checking if the nodes have been removed
-    /// but the array hasn't been dealloced
-    bool _children_alloced;
-    /// Pointer(array) to a pointer (data) of all our children nodes
-    struct dodoTrieNode** children;
-    /// Amount of nodes.
-    size_t count;
-};
 
 /// @param p: Pointer to the allocated memory
 /// @param h: If set to 'q' we panic because of the error,
 /// if set to 'c' we continue
 void
-mem_error_handling(void* p, const wchar_t h)
+mem_error_handling(void* p, const char h)
 {
     if (p == NULL)
     {
 
-        wprintf(L"Error %i: %hs", errno, strerror(errno));
+        printf("Error %i: %hs\n", errno, strerror(errno));
         // I think that 2 if statements looks better but switch literally
         // made for these situations
         switch (h)
         {
         case 'c':
         {
-            wprintf(L"Continuing...");
+            printf("Continuing...\n");
             break;
         }
         case 'q':
@@ -57,7 +36,7 @@ mem_error_handling(void* p, const wchar_t h)
             break;
         }
         default:
-            wprintf(L"Continuing...");
+            printf("Continuing...\n");
         }
     }
 }
@@ -87,15 +66,15 @@ dodo_make_trie()
 
 /// Function to make a node with a char we specify
 struct dodoTrieNode*
-dodo_make_tnode(const wchar_t c)
+dodo_make_tnode(const char c)
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
     mem_error_handling(node, 'q');
-    /// STX control character because I think \0 is confusing
     node->c = c;
     // XXX: Look at the XXX on top of the dodoTrieNode definition
-    node->children = nullptr;
-    node->count    = 0;
+    node->_children_alloced = false;
+    node->children          = nullptr;
+    node->count             = 0;
 
     return node;
 }
@@ -104,7 +83,7 @@ dodo_make_tnode(const wchar_t c)
 //  a const char* called haystack and a const char* called needle
 /// Find the children node with the character we are looking for
 struct dodoTrieNode*
-dodo_trie_find_child(struct dodoTrieNode* node, const wchar_t c)
+dodo_trie_find_child(struct dodoTrieNode* node, const char c)
 {
     // If its empty, theres no children
     if (node->count == 0)
@@ -123,13 +102,13 @@ dodo_trie_find_child(struct dodoTrieNode* node, const wchar_t c)
 /// This functions inserts 1 char into the nodes below the one we pass,
 /// and then returns said node we just inserted
 struct dodoTrieNode*
-dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
+dodo_trie_insert(struct dodoTrieNode* node, const char c)
 {
     // not a valid character to insert since it's our character for root of the
     // trie
     if (c == 0x02)
     {
-        wprintf(L"Error: 0x02 is not a valid character for keywords.");
+        printf("Error: 0x02 is not a valid character for keywords.\n");
         exit(-1);
     }
     // Arbitrary node
@@ -141,7 +120,7 @@ dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
     {
         // First we try to check that the node is not there already
         b_node = dodo_trie_find_child(a_node, c);
-        // No children node has our wchar so we need to add it
+        // No children node has our char so we need to add it
         if (b_node == nullptr)
         {
             // Expand the size of the array
@@ -169,9 +148,9 @@ dodo_trie_insert(struct dodoTrieNode* node, const wchar_t c)
     return a_node->children[0];
 }
 
-/// This function let's us add a keyword to the tree
+/// This function lets us add a keyword to the tree
 void
-dodo_trie_add_keyword(struct dodoTrieNode* node, const wchar_t* keyword)
+dodo_trie_add_keyword(struct dodoTrieNode* node, const char* keyword)
 {
     // Arbitrary node, on this one we will store the node on top of the one we
     // will insert

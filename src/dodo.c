@@ -1,15 +1,22 @@
 #include "term_colors.h"
-#include "trie.h"
+#include <trie.h>
 
 #include <errno.h>
 #include <locale.h>
-#include <stddef.h>
+#include <silky.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <wchar.h>
 #include <wordexp.h>
+
+/* Im having thinking thoughts, I dont know if I like using wchar, in reality
+ * we have to ask ourselves the question:
+ * "Am I supposed to care if a character is UTF or ASCII?"
+ * Because in reality, if the trie can split things by 8 bits (chars)
+ * then I dont really have to care about the content
+ */
 
 struct commentKeys
 {
@@ -176,7 +183,7 @@ main(int argc, char** argv)
     char* ext       = strrchr("test.py", '.');
     wprintf(L"Extension: %hs", ext);
 
-    /*MORSEL: Cool thing about wchars
+    /*MORSEL: Cool thing about unicode
      * UTF-8 is compatible with regular chars
      * thats because chars are 8 bits
      * but we never use the first bit
@@ -184,12 +191,15 @@ main(int argc, char** argv)
      * so the letter e is 01100101 in binary
      * but this emoji 🧬 is 11110000 10011111 10100111 10101100
      * So when a function that operates on utf 8 sees the first bit
-     * it knows if said char,or rune, shoutouts golang,
-     * needs to be handled like a multibyte sequence or like ASCII
+     * it knows if it has to treat it like a char (ASCII)
+     * or a multibyte char (rune?)
+     * shoutouts golang
      * "I can't believe it's not ASCII!"
      */
-    wint_t x;
-    while ((x = (fgetwc(test_file))) != WEOF)
+    int x;
+    // TODO: Change this to use bit flags and the var name to be 'flags'
+    uint8_t comment = 0;
+    while ((x = (fgetc(test_file))) != EOF)
     {
         /* The way we implement this should be that when we
          * finally find a letter we are looking for we save the position, so we
@@ -197,8 +207,19 @@ main(int argc, char** argv)
          * Perhaps this should be filetype compatible thonk
          * so if its py it knows what comments to use
          */
-        wprintf(L"%lc", x);
-        if (x > 32) wprintf(L"valid");
+        if (x == '#')
+        {
+            comment = 1;
+        }
+        if (comment)
+        {
+            printf("%c", x);
+        }
+        // STEP: We need to see if the letter we have matches one in the tree
+        // STEP: If it doesnt, continue, if it does, see if the next is the one
+        // NOTE: We should save the cursor position at the start of this'scan'
+        // so we can color the output
+        if (x == '\n') comment = 0;
     }
     fclose(test_file);
 
