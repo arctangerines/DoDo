@@ -24,6 +24,8 @@ struct dodoTrieNode
     struct dodoTrieNode** children;
     /// Amount of nodes.
     size_t count;
+    /// End of the word
+    bool bottom;
 };
 
 void

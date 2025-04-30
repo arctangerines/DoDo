@@ -60,6 +60,7 @@ dodo_make_trie()
     node->_children_alloced = false;
     node->children          = nullptr;
     node->count             = 0;
+    node->bottom            = false;
 
     return node;
 }
@@ -75,6 +76,7 @@ dodo_make_tnode(const char c)
     node->_children_alloced = false;
     node->children          = nullptr;
     node->count             = 0;
+    node->bottom            = false;
 
     return node;
 }
@@ -120,24 +122,24 @@ dodo_trie_insert(struct dodoTrieNode* node, const char c)
     {
         // First we try to check that the node is not there already
         b_node = dodo_trie_find_child(a_node, c);
-        // No children node has our char so we need to add it
-        if (b_node == nullptr)
+        if (b_node != nullptr)
         {
-            // Expand the size of the array
-            a_node->count += 1;
-            // Realloc to expand, but this is up
-            struct dodoTrieNode** a_child =
-                realloc(a_node->children,
-                        sizeof(struct dodoTrieNode**) * (a_node->count));
-            // Error handling
-            // Should we add a perror handling function
-            mem_error_handling(a_child, 'q');
-            a_node->children                    = a_child;
-            struct dodoTrieNode* c_node         = dodo_make_tnode(c);
-            a_node->children[a_node->count - 1] = c_node;
-            return c_node;
+            return b_node;
         }
-        return b_node;
+
+        // No children node has our char so we need to add it:
+        // Expand the size of the array
+        a_node->count += 1;
+        // Realloc to expand, but this is up
+        struct dodoTrieNode** a_child = realloc(
+            a_node->children, sizeof(struct dodoTrieNode**) * (a_node->count));
+        // Error handling
+        // Should we add a perror handling function?
+        mem_error_handling(a_child, 'q');
+        a_node->children                    = a_child;
+        struct dodoTrieNode* c_node         = dodo_make_tnode(c);
+        a_node->children[a_node->count - 1] = c_node;
+        return c_node;
     }
     // stupid
     a_node->children = malloc(sizeof(struct dodoTrieNode**));
@@ -145,6 +147,10 @@ dodo_trie_insert(struct dodoTrieNode* node, const char c)
     a_node->children[0]       = dodo_make_tnode(c);
     a_node->_children_alloced = true;
     a_node->count += 1;
+    if (a_node->bottom == true)
+    {
+        a_node->bottom = false;
+    }
     return a_node->children[0];
 }
 
@@ -160,6 +166,7 @@ dodo_trie_add_keyword(struct dodoTrieNode* node, const char* keyword)
         // Function returns the node that we have to continue inserting from
         a_node = dodo_trie_insert(a_node, keyword[j]);
     }
+    a_node->bottom = true;
 }
 
 /// This function destroys the children nodes and the node itself we passed
