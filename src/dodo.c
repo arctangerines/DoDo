@@ -244,7 +244,7 @@ main(int argc, char** argv)
                 x = fgetc(test_file);
                 if (x == '/')
                 {
-                    comment = 1;
+                    comment = 0;
                 }
                 fsetpos(test_file, &pos);
             }
