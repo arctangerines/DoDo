@@ -11,6 +11,9 @@
 #include <wchar.h>
 #include <wordexp.h>
 
+#define COMMENT 0b00000001
+#define SKIP    0b00000010
+
 /* Im having thinking thoughts, I dont know if I like using wchar, in reality
  * we have to ask ourselves the question:
  * "Am I supposed to care if a character is UTF or ASCII?"
@@ -20,8 +23,8 @@
 
 struct commentKeys
 {
-    wchar_t** exts;
-    wchar_t** keys;
+    char** exts;
+    char** keys;
 };
 
 void
@@ -165,10 +168,12 @@ main(int argc, char** argv)
     /// Portable locale lolz
     setlocale(LC_ALL, "");
 
-    if (create_config_files() == -1)
+    // TODO: Config file and its integration
+
+    bool only_comments;
+    if (argc > 1 && strcmp(argv[1], "-c") == 0)
     {
-        wprintf(L"Error %i: %hs", errno, strerror(errno));
-        exit(errno);
+        only_comments = true;
     }
 
     struct dodoTrieNode* cool_trie = dodo_make_trie();
@@ -183,11 +188,10 @@ main(int argc, char** argv)
     char* ext       = strrchr("test.py", '.');
 
     /*MORSEL: Cool thing about unicode
-     * UTF-8 is compatible with regular chars
-     * thats because chars are 8 bits
-     * but we never use the first bit
+     * UTF-8 is compatible with regular chars and thats because chars are 8 bits
+     * but we never use the first bit,
      * so if a character is UTF-8 you just check the first bit
-     * so the letter e is 01100101 in binary
+     * so the letter e is 01100101 in binary,
      * but this emoji 🧬 is 11110000 10011111 10100111 10101100
      * So when a function that operates on utf 8 sees the first bit
      * it knows if it has to treat it like a char (ASCII)
@@ -196,10 +200,8 @@ main(int argc, char** argv)
      * "I can't believe it's not ASCII!"
      */
     int x;
-    // TODO: Change this to use bit flags and the var name to be 'flags'
-    // FIXME: Design bitflags
-    uint8_t comment       = 0;
-    bool    only_comments = false;
+    // TODO: Change this to use the bit flags and the var name to be 'flags'
+    uint8_t comment = 0;
     fpos_t  pos;
     /// This variable is going to tell us how many letters to skip
     size_t skip = 0;
@@ -215,18 +217,41 @@ main(int argc, char** argv)
         {
             comment = 1;
         }
+        // STEP: We check if a char is the first char of a multiline comment,
+        //  if it is a multiline we lookahead, then if it is multiline,
+        //  we set the flag
+        if (x == '/')
+        {
+            fgetpos(test_file, &pos);
+            x = fgetc(test_file);
+            if (x == '*')
+            {
+                comment = 1;
+            }
+            fsetpos(test_file, &pos);
+        }
+        // STEP: We can repeat this with every char in the comment until
+        //  multiline is over but doing it the other way
         if (!comment && !only_comments)
         {
             printf("%c", x);
         }
         if (comment && skip == 0)
         {
+            if (x == '*')
+            {
+                fgetpos(test_file, &pos);
+                x = fgetc(test_file);
+                if (x == '/')
+                {
+                    comment = 1;
+                }
+                fsetpos(test_file, &pos);
+            }
             struct dodoTrieNode* starting_point =
                 dodo_trie_find_child(cool_trie, x);
             if (starting_point != nullptr)
             {
-                // FIXME: Clever, we use this i to count how many steps we have
-                //  moved, then we ignore for that many steps
                 while ((x = fgetc(test_file)) != EOF)
                 {
                     starting_point = dodo_trie_find_child(starting_point, x);
