@@ -61,13 +61,14 @@ dodo_make_trie()
     node->children          = nullptr;
     node->count             = 0;
     node->bottom            = false;
+    node->depth             = 0;
 
     return node;
 }
 
 /// Function to make a node with a char we specify
 struct dodoTrieNode*
-dodo_make_tnode(const char c)
+dodo_make_tnode(const char c, size_t depth)
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
     mem_error_handling(node, 'q');
@@ -77,6 +78,7 @@ dodo_make_tnode(const char c)
     node->children          = nullptr;
     node->count             = 0;
     node->bottom            = false;
+    node->depth             = depth;
 
     return node;
 }
@@ -136,15 +138,16 @@ dodo_trie_insert(struct dodoTrieNode* node, const char c)
         // Error handling
         // Should we add a perror handling function?
         mem_error_handling(a_child, 'q');
-        a_node->children                    = a_child;
-        struct dodoTrieNode* c_node         = dodo_make_tnode(c);
+        a_node->children = a_child;
+        // We add +1 because we adding an element downwards
+        struct dodoTrieNode* c_node = dodo_make_tnode(c, a_node->depth + 1);
         a_node->children[a_node->count - 1] = c_node;
         return c_node;
     }
     // stupid
     a_node->children = malloc(sizeof(struct dodoTrieNode**));
     mem_error_handling(a_node->children, 'q');
-    a_node->children[0]       = dodo_make_tnode(c);
+    a_node->children[0]       = dodo_make_tnode(c, a_node->depth + 1);
     a_node->_children_alloced = true;
     a_node->count += 1;
     if (a_node->bottom == true)

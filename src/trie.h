@@ -26,6 +26,8 @@ struct dodoTrieNode
     size_t count;
     /// End of the word
     bool bottom;
+    /// How long is the word. (It's just len but in a different direction)
+    size_t depth;
 };
 
 void
@@ -35,7 +37,7 @@ struct dodoTrieNode*
 dodo_make_trie();
 
 struct dodoTrieNode*
-dodo_make_tnode(const char c);
+dodo_make_tnode(const char c, size_t depth);
 
 struct dodoTrieNode*
 dodo_trie_find_child(struct dodoTrieNode* node, const char c);
