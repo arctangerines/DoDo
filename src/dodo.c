@@ -181,7 +181,6 @@ main(int argc, char** argv)
 
     FILE* test_file = fopen("test.py", "r");
     char* ext       = strrchr("test.py", '.');
-    wprintf(L"Extension: %hs", ext);
 
     /*MORSEL: Cool thing about unicode
      * UTF-8 is compatible with regular chars
@@ -198,7 +197,12 @@ main(int argc, char** argv)
      */
     int x;
     // TODO: Change this to use bit flags and the var name to be 'flags'
-    uint8_t comment = 0;
+    // FIXME: Design bitflags
+    uint8_t comment       = 0;
+    bool    only_comments = false;
+    fpos_t  pos;
+    /// This variable is going to tell us how many letters to skip
+    size_t skip = 0;
     while ((x = (fgetc(test_file))) != EOF)
     {
         /* The way we implement this should be that when we
@@ -211,15 +215,46 @@ main(int argc, char** argv)
         {
             comment = 1;
         }
-        if (comment)
+        if (!comment && !only_comments)
         {
             printf("%c", x);
         }
-        // STEP: We need to see if the letter we have matches one in the tree
-        // STEP: If it doesnt, continue, if it does, see if the next is the one
-        // NOTE: We should save the cursor position at the start of this'scan'
-        // so we can color the output
-        if (x == '\n') comment = 0;
+        if (comment && skip == 0)
+        {
+            struct dodoTrieNode* starting_point =
+                dodo_trie_find_child(cool_trie, x);
+            if (starting_point != nullptr)
+            {
+                // FIXME: Clever, we use this i to count how many steps we have
+                //  moved, then we ignore for that many steps
+                while ((x = fgetc(test_file)) != EOF)
+                {
+                    starting_point = dodo_trie_find_child(starting_point, x);
+                    if (starting_point == nullptr)
+                    {
+                        break;
+                    }
+                    if (starting_point->bottom == true)
+                    {
+                        // Go back to beginning of keyword
+                        fsetpos(test_file, &pos);
+                        skip = starting_point->depth;
+                        break;
+                    }
+                    // if (starting_point == nullptr&&)
+                }
+            }
+            else
+                printf("%c", x);
+            fgetpos(test_file, &pos);
+        }
+        else if (comment && skip != 0)
+        {
+            printf(MAGHB "%c" COLOR_RESET, x);
+            skip -= 1;
+        }
+
+        if (comment && x == '\n') comment = 0;
     }
     fclose(test_file);
 
