@@ -11,8 +11,14 @@
 #include <wchar.h>
 #include <wordexp.h>
 
-#define COMMENT 0b00000001
-#define SKIP    0b00000010
+// TODO: Start counting line and position in line
+
+/// For bit flags idea but probably wont use it
+/// Single line comment
+#define SL_COMMENT 0b00000001
+/// Multiline comment
+#define ML_COMMENT 0b00000010
+#define SKIP       0b00000100
 
 /* Im having thinking thoughts, I dont know if I like using wchar, in reality
  * we have to ask ourselves the question:
@@ -30,6 +36,22 @@ struct commentKeys
 void
 ck_add_key(struct commentKeys* ck)
 {
+}
+
+/// @param c: char we are looking for
+bool
+simple_look_ahead(char c, FILE* f, fpos_t* pos)
+{
+    fgetpos(f, pos);
+    // L for lookahead
+    int l = fgetc(f);
+    if (l == c)
+    {
+        fsetpos(f, pos);
+        return true;
+    }
+    fsetpos(f, pos);
+    return false;
 }
 
 // TODO: Look at error codes in the C/GNU way thinking emoji
@@ -163,14 +185,20 @@ create_config_files()
 int
 main(int argc, char** argv)
 {
-    FILE* config_file = fopen("./testfig/dodofile", "a+");
+    // FILE* config_file = fopen("./testfig/dodofile", "a+");
+
+    // if (create_config_files() == -1)
+    // {
+    //     wprintf(L"Error %i: %hs", errno, strerror(errno));
+    //     exit(errno);
+    // }
 
     /// Portable locale lolz
     setlocale(LC_ALL, "");
 
     // TODO: Config file and its integration
 
-    bool only_comments;
+    bool only_comments = false;
     if (argc > 1 && strcmp(argv[1], "-c") == 0)
     {
         only_comments = true;
@@ -200,56 +228,58 @@ main(int argc, char** argv)
      * "I can't believe it's not ASCII!"
      */
     int x;
-    // TODO: Change this to use the bit flags and the var name to be 'flags'
-    uint8_t comment = 0;
-    fpos_t  pos;
+    /// Single line comment
+    bool sl_comment = false;
+    /// Multiline comment
+    bool   ml_comment = false;
+    fpos_t pos;
     /// This variable is going to tell us how many letters to skip
-    size_t skip = 0;
+    size_t skip     = 0;
+    size_t inc_skip = 0;
+    // The idea of this loop is that we loop through the file char by char
+    // if we find a comment we start checking if one of the chars is in our trie
+    // if it is we check if we keep going down the trie we complete a word
+    // if we did complete a word we reprint it but with @color_todo_print
+    // single line comments end on a '\n'
+    // multiline comments we have to constantly check if its over by checking
+    // one char then looking ahead to see if its the multiline char sequence
+    // that ends it
+    // REVIEW: Candidate for rewrite
+    // NOTE: This is going to be rewritten, it works but not the way it should
+    // nor is it particularly useful
     while ((x = (fgetc(test_file))) != EOF)
     {
-        /* The way we implement this should be that when we
-         * finally find a letter we are looking for we save the position, so we
-         * can check.
-         * Perhaps this should be filetype compatible thonk
-         * so if its py it knows what comments to use
-         */
+        // FIXME: Implement a way to take escape sequences into consideration
+        // STEP: Probably with lookahead to find '\\'
         if (x == '#')
         {
-            comment = 1;
+            sl_comment = 1;
         }
         // STEP: We check if a char is the first char of a multiline comment,
         //  if it is a multiline we lookahead, then if it is multiline,
         //  we set the flag
         if (x == '/')
         {
-            fgetpos(test_file, &pos);
-            x = fgetc(test_file);
-            if (x == '*')
+            if (simple_look_ahead('*', test_file, &pos))
             {
-                comment = 1;
+                ml_comment = 1;
             }
-            fsetpos(test_file, &pos);
         }
-        // STEP: We can repeat this with every char in the comment until
-        //  multiline is over but doing it the other way
-        if (!comment && !only_comments)
+
+        // Basically like deciding if we ignore the text with no comments
+        // The sl_comment/ml_comment is relevant here because IF we are reading
+        // comments we have the printing being handled elsewhere
+        if (!(sl_comment || ml_comment) && !only_comments)
         {
             printf("%c", x);
         }
-        if (comment && skip == 0)
+        // We are checking the comments and dont have any n number of chars to
+        // skip
+        if ((sl_comment || ml_comment) && skip == 0)
         {
-            if (x == '*')
-            {
-                fgetpos(test_file, &pos);
-                x = fgetc(test_file);
-                if (x == '/')
-                {
-                    comment = 0;
-                }
-                fsetpos(test_file, &pos);
-            }
             struct dodoTrieNode* starting_point =
                 dodo_trie_find_child(cool_trie, x);
+            // if we found something, start searching to see if the word exists
             if (starting_point != nullptr)
             {
                 while ((x = fgetc(test_file)) != EOF)
@@ -262,6 +292,10 @@ main(int argc, char** argv)
                     if (starting_point->bottom == true)
                     {
                         // Go back to beginning of keyword
+                        // this letter wont be printed on this loop since
+                        // we skipped the else branch (duh)
+                        // but the next loop starts there and now will be
+                        // printed in colored output @color_todo_print
                         fsetpos(test_file, &pos);
                         skip = starting_point->depth;
                         break;
@@ -269,17 +303,41 @@ main(int argc, char** argv)
                     // if (starting_point == nullptr&&)
                 }
             }
+            // If we dont find the word exists,
+            // we still print the char inside the comment
             else
+            {
                 printf("%c", x);
+            }
+
+            // always save pos so we can do destructive searches
             fgetpos(test_file, &pos);
         }
-        else if (comment && skip != 0)
+        else if ((sl_comment || ml_comment) && skip != 0)
         {
+        color_todo_print:
             printf(MAGHB "%c" COLOR_RESET, x);
             skip -= 1;
         }
 
-        if (comment && x == '\n') comment = 0;
+        // the single line comment is over
+        if (sl_comment && x == '\n') sl_comment = 0;
+        // end multiline comment
+        if (ml_comment)
+        {
+            if (x == '*')
+            {
+                if (simple_look_ahead('/', test_file, &pos))
+                {
+                    ml_comment = 0;
+                    // We don't need to check anything because we already looked
+                    // ahead
+                    x = fgetc(test_file);
+                    printf("%c", x);
+                    if (only_comments) printf("\n");
+                }
+            }
+        }
     }
     fclose(test_file);
 
