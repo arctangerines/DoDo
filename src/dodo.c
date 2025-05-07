@@ -232,112 +232,84 @@ main(int argc, char** argv)
     bool sl_comment = false;
     /// Multiline comment
     bool   ml_comment = false;
+    bool   hl_mode    = false;
     fpos_t pos;
     /// This variable is going to tell us how many letters to skip
     size_t skip     = 0;
     size_t inc_skip = 0;
-    // The idea of this loop is that we loop through the file char by char
-    // if we find a comment we start checking if one of the chars is in our trie
-    // if it is we check if we keep going down the trie we complete a word
-    // if we did complete a word we reprint it but with @color_todo_print
-    // single line comments end on a '\n'
-    // multiline comments we have to constantly check if its over by checking
-    // one char then looking ahead to see if its the multiline char sequence
-    // that ends it
-    // REVIEW: Candidate for rewrite
-    // NOTE: This is going to be rewritten, it works but not the way it should
-    // nor is it particularly useful
+
+    // Line number we are at
+    size_t line_no = 1;
+    // Position of cursor
+    size_t cursor_pos = 0;
+    /*
+     * So when I was trying to decide how much precision to add for the padding
+     * I asked myself:
+     * "How do I get the amount of 0's it takes to represent a number...?
+     * Funny... I think I should know this, but I don't remember."
+     * 3 seconds later... logarithm, but is it really worth it to use log
+     * to get the precision so early on? Probably not but fun brain fart
+     */
+    // printf("%*lu |  ", -3, line_no);
     while ((x = (fgetc(test_file))) != EOF)
     {
-        // FIXME: Implement a way to take escape sequences into consideration
-        // STEP: Probably with lookahead to find '\\'
+        cursor_pos += 1;
+        // TODO: Change this condition to be centered around comment bools
+        //  and not chars
         if (x == '#')
         {
-            sl_comment = 1;
-        }
-        // STEP: We check if a char is the first char of a multiline comment,
-        //  if it is a multiline we lookahead, then if it is multiline,
-        //  we set the flag
-        if (x == '/')
-        {
-            if (simple_look_ahead('*', test_file, &pos))
+            sl_comment                  = 1;
+            struct dodoTrieNode* a_node = cool_trie;
+            while ((x = fgetc(test_file)) != EOF)
             {
-                ml_comment = 1;
+                a_node = dodo_trie_find_child(a_node, x);
+                if (a_node != nullptr && a_node->bottom)
+                {
+                    // STEP: So actually we want to later on (soon)
+                    //  make it so when we find a letter we save that position
+                    //  and then do what we are doing below here for bottom
+                    //  save the position before fgetc
+                    fsetpos(test_file, &pos);
+                    x       = fgetc(test_file);
+                    hl_mode = true;
+                    break;
+                }
+                if (a_node == nullptr)
+                {
+                    a_node = cool_trie;
+                }
+                // this is useless
+                if (sl_comment && x == '\n')
+                {
+                    sl_comment = 0;
+                    break;
+                }
+                // STEP: If we do find the bottom, we have a word and we should
+                //  print in an special mode where its colored until we end the
+                //  string
             }
         }
 
-        // Basically like deciding if we ignore the text with no comments
-        // The sl_comment/ml_comment is relevant here because IF we are reading
-        // comments we have the printing being handled elsewhere
-        if (!(sl_comment || ml_comment) && !only_comments)
+        if (hl_mode)
         {
             printf("%c", x);
         }
-        // We are checking the comments and dont have any n number of chars to
-        // skip
-        if ((sl_comment || ml_comment) && skip == 0)
+        if (x == '\n')
         {
-            struct dodoTrieNode* starting_point =
-                dodo_trie_find_child(cool_trie, x);
-            // if we found something, start searching to see if the word exists
-            if (starting_point != nullptr)
-            {
-                while ((x = fgetc(test_file)) != EOF)
-                {
-                    starting_point = dodo_trie_find_child(starting_point, x);
-                    if (starting_point == nullptr)
-                    {
-                        break;
-                    }
-                    if (starting_point->bottom == true)
-                    {
-                        // Go back to beginning of keyword
-                        // this letter wont be printed on this loop since
-                        // we skipped the else branch (duh)
-                        // but the next loop starts there and now will be
-                        // printed in colored output @color_todo_print
-                        fsetpos(test_file, &pos);
-                        skip = starting_point->depth;
-                        break;
-                    }
-                    // if (starting_point == nullptr&&)
-                }
-            }
-            // If we dont find the word exists,
-            // we still print the char inside the comment
-            else
-            {
-                printf("%c", x);
-            }
-
-            // always save pos so we can do destructive searches
-            fgetpos(test_file, &pos);
+            hl_mode    = 0;
+            sl_comment = 0;
         }
-        else if ((sl_comment || ml_comment) && skip != 0)
-        {
-        color_todo_print:
-            printf(MAGHB "%c" COLOR_RESET, x);
-            skip -= 1;
-        }
-
-        // the single line comment is over
-        if (sl_comment && x == '\n') sl_comment = 0;
-        // end multiline comment
-        if (ml_comment)
-        {
-            if (x == '*')
-            {
-                if (simple_look_ahead('/', test_file, &pos))
-                {
-                    ml_comment = 0;
-                    // We don't need to check anything because we already looked
-                    // ahead
-                    x = fgetc(test_file);
-                    printf("%c", x);
-                    if (only_comments) printf("\n");
-                }
-            }
-        }
+        // if (x == '\n')
+        // {
+        //     hl_mode    = 0;
+        //     sl_comment = 0;
+        //     line_no += 1;
+        //     if (line_no == 100) break;
+        //     // reset cursor
+        //     cursor_pos = 0;
+        //     printf("%*lu |  ", -3, line_no);
+        // }
+        fgetpos(test_file, &pos);
     }
     fclose(test_file);
 
