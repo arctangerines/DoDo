@@ -15,17 +15,81 @@
 
 /// For bit flags idea but probably wont use it
 /// Single line comment
-#define SL_COMMENT 0b00000001
+#define SL_COMMENT  0b00000001
 /// Multiline comment
-#define ML_COMMENT 0b00000010
-#define SKIP       0b00000100
+#define ML_COMMENT  0b00000010
+#define SKIP        0b00000100
 
-/* Im having thinking thoughts, I dont know if I like using wchar, in reality
- * we have to ask ourselves the question:
- * "Am I supposed to care if a character is UTF or ASCII?"
- * Because in reality, if the trie can split things by 8 bits (chars)
- * then I dont really have to care about the content
- */
+// UTF characteristics (thanks to the Unicode spec)
+#define UTF8_4BYTES 0b11110000
+#define UTF8_3BYTES 0b11100000
+#define UTF8_2BYTES 0b11000000
+#define UTF8_1BYTE  0b00000000
+
+// TODO: Add a funciton to determine the length of a UTF-8 char,
+//  this should return the number of bytes to ignore for colored output
+
+size_t
+utf8_length(uint32_t c)
+{
+}
+
+struct hlInfo
+{
+    size_t line_start;
+    size_t char_pos_start;
+    size_t line_end;
+    size_t char_pos_end;
+};
+
+// this could easily be made for arbitraryd ata types lmfao
+struct dodo_linked_list
+{
+    struct hlInfo            hl;
+    struct dodo_linked_list* next;
+    bool                     tail;
+};
+
+struct dodo_linked_list*
+dodo_ll_make(size_t hl_line_start, size_t hl_char_pos_start, size_t hl_line_end,
+             size_t hl_char_pos_end)
+{
+    // A linked list
+    struct dodo_linked_list* a_ll = malloc(sizeof(struct dodo_linked_list));
+    a_ll->hl.line_start           = hl_line_start;
+    a_ll->hl.char_pos_start       = hl_char_pos_start;
+    a_ll->hl.line_end             = hl_line_end;
+    a_ll->hl.char_pos_end         = hl_char_pos_end;
+    a_ll->next                    = nullptr;
+    a_ll->tail                    = true;
+    return a_ll;
+}
+struct dodo_linked_list*
+dodo_ll_new_node(struct dodo_linked_list* root, size_t hl_line_start,
+                 size_t hl_char_pos_start, size_t hl_line_end,
+                 size_t hl_char_pos_end);
+int
+dodo_ll_destroy(struct dodo_linked_list* a_ll)
+{
+    // FIXME: it works but i dont like it, could be a simple recursive function
+    struct dodo_linked_list* current_element = nullptr;
+    struct dodo_linked_list* next_element    = nullptr;
+    if (a_ll == nullptr) return -1;
+    if (a_ll->tail)
+    {
+        free(a_ll);
+        return 0;
+    }
+    current_element = a_ll->next;
+    if (current_element == nullptr) return -1;
+    while (next_element != nullptr)
+    {
+        next_element =
+            (current_element->tail) ? nullptr : current_element->next;
+        free(current_element);
+        current_element = next_element;
+    }
+}
 
 struct commentKeys
 {
@@ -81,9 +145,9 @@ create_config_files()
         size_t n = strlen(conf_dodo) + env_path_len + strlen(conf_file) + 1;
         char*  conf_dodo_path;
         conf_dodo_path = malloc(sizeof(char) * n);
-        // This is important because '\0' is gonna replace what we got at the
-        // end of the destination string, and in this case
-        // that is the destination string, so it needs to be initialized
+        // This is important because '\0' is gonna replace what we got at
+        // the end of the destination string, and in this case that is the
+        // destination string, so it needs to be initialized
         conf_dodo_path[0] = '\0';
         strncat(conf_dodo_path, conf_dir_env_path, env_path_len);
         strncat(conf_dodo_path, conf_dodo, strlen(conf_dodo));
@@ -216,16 +280,13 @@ main(int argc, char** argv)
     char* ext       = strrchr("test.py", '.');
 
     /*MORSEL: Cool thing about unicode
-     * UTF-8 is compatible with regular chars and thats because chars are 8 bits
-     * but we never use the first bit,
-     * so if a character is UTF-8 you just check the first bit
-     * so the letter e is 01100101 in binary,
-     * but this emoji 🧬 is 11110000 10011111 10100111 10101100
-     * So when a function that operates on utf 8 sees the first bit
-     * it knows if it has to treat it like a char (ASCII)
-     * or a multibyte char (rune?)
-     * shoutouts golang
-     * "I can't believe it's not ASCII!"
+     * UTF-8 is compatible with regular chars and thats because chars are 8
+     * bits but we never use the first bit, so if a character is UTF-8 you
+     * just check the first bit so the letter e is 01100101 in binary, but
+     * this emoji 🧬 is 11110000 10011111 10100111 10101100 So when a
+     * function that operates on utf 8 sees the first bit it knows if it has
+     * to treat it like a char (ASCII) or a multibyte char (rune?) shoutouts
+     * golang "I can't believe it's not ASCII!"
      */
     int x;
     /// Single line comment
@@ -242,74 +303,59 @@ main(int argc, char** argv)
     size_t line_no = 1;
     // Position of cursor
     size_t cursor_pos = 0;
-    /*
-     * So when I was trying to decide how much precision to add for the padding
-     * I asked myself:
-     * "How do I get the amount of 0's it takes to represent a number...?
-     * Funny... I think I should know this, but I don't remember."
-     * 3 seconds later... logarithm, but is it really worth it to use log
-     * to get the precision so early on? Probably not but fun brain fart
+    // printf("%*lu |  ", -3, line_no);
+    /* It should have a lookahead concept but not for a word or a char
+     * but for comment lines, also I think this should be done in 2 passes,
+     * one stores where the todo starts and the second pass prints
      */
     // printf("%*lu |  ", -3, line_no);
     while ((x = (fgetc(test_file))) != EOF)
     {
-        cursor_pos += 1;
-        // TODO: Change this condition to be centered around comment bools
-        //  and not chars
+        printf("%c", x);
         if (x == '#')
         {
-            sl_comment                  = 1;
-            struct dodoTrieNode* a_node = cool_trie;
-            while ((x = fgetc(test_file)) != EOF)
+            sl_comment = 1;
+        }
+        if ((sl_comment || ml_comment))
+        {
+            // Current node
+            struct dodoTrieNode* c_node = dodo_trie_find_child(cool_trie, x);
+            if (c_node != nullptr)
             {
-                a_node = dodo_trie_find_child(a_node, x);
-                if (a_node != nullptr && a_node->bottom)
+                fgetpos(test_file, &pos);
+                size_t hl_line = line_no;
+                size_t hl_cursor = cursor_pos;
+                size_t hl_line_end = line_no;
+                size_t hl_cursor_end = cursor_pos;
+                while ((x = fgetc(test_file)) != EOF)
                 {
-                    // STEP: So actually we want to later on (soon)
-                    //  make it so when we find a letter we save that position
-                    //  and then do what we are doing below here for bottom
-                    //  save the position before fgetc
-                    fsetpos(test_file, &pos);
-                    x       = fgetc(test_file);
-                    hl_mode = true;
-                    break;
+                    c_node = dodo_trie_find_child(cool_trie, x);
+                    if (c_node == nullptr)
+                    {
+                        break;
+                    }
+                    if (c_node->bottom == true)
+                    {
+                        // STEP: Add the hl_line and hl_cursor values to a linked list
+                        fsetpos(test_file, &pos);
+                    }
+
+                    hl_cursor_end += 1;
+                    if (x =='\n')
+                    {
+                        hl_line_end += 1;
+                        hl_cursor_end = 0;
+                    }
                 }
-                if (a_node == nullptr)
-                {
-                    a_node = cool_trie;
-                }
-                // this is useless
-                if (sl_comment && x == '\n')
-                {
-                    sl_comment = 0;
-                    break;
-                }
-                // STEP: If we do find the bottom, we have a word and we should
-                //  print in an special mode where its colored until we end the
-                //  string
             }
         }
-
-        if (hl_mode)
-        {
-            printf("%c", x);
-        }
+        cursor_pos += 1;
         if (x == '\n')
         {
-            hl_mode    = 0;
-            sl_comment = 0;
+            line_no += 1;
+            cursor_pos = 0;
         }
-        // if (x == '\n')
-        // {
-        //     hl_mode    = 0;
-        //     sl_comment = 0;
-        //     line_no += 1;
-        //     if (line_no == 100) break;
-        //     // reset cursor
-        //     cursor_pos = 0;
-        //     printf("%*lu |  ", -3, line_no);
-        // }
-        fgetpos(test_file, &pos);
+        if (x == '\n') printf("%*lu |  ", -3, line_no);
     }
     fclose(test_file);
 
