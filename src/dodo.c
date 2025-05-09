@@ -32,6 +32,7 @@
 size_t
 utf8_length(uint32_t c)
 {
+    // xor the bits
 }
 
 struct hlInfo
@@ -42,52 +43,103 @@ struct hlInfo
     size_t char_pos_end;
 };
 
+/*TODO: For linked list
+ * - Add removing elements and keeping order
+ * - Add inserting elements in between 2 elements
+ */
+// FIXME: names names names names names, theyre all ugly
 // this could easily be made for arbitraryd ata types lmfao
 struct dodo_linked_list
 {
     struct hlInfo            hl;
     struct dodo_linked_list* next;
-    bool                     tail;
 };
 
 struct dodo_linked_list*
-dodo_ll_make(size_t hl_line_start, size_t hl_char_pos_start, size_t hl_line_end,
-             size_t hl_char_pos_end)
+dodo_ll_new_node(size_t hl_line_start, size_t hl_char_pos_start,
+                 size_t hl_line_end, size_t hl_char_pos_end)
 {
-    // A linked list
     struct dodo_linked_list* a_ll = malloc(sizeof(struct dodo_linked_list));
     a_ll->hl.line_start           = hl_line_start;
     a_ll->hl.char_pos_start       = hl_char_pos_start;
     a_ll->hl.line_end             = hl_line_end;
     a_ll->hl.char_pos_end         = hl_char_pos_end;
     a_ll->next                    = nullptr;
-    a_ll->tail                    = true;
     return a_ll;
 }
 struct dodo_linked_list*
-dodo_ll_new_node(struct dodo_linked_list* root, size_t hl_line_start,
-                 size_t hl_char_pos_start, size_t hl_line_end,
-                 size_t hl_char_pos_end);
-int
-dodo_ll_destroy(struct dodo_linked_list* a_ll)
+dodo_ll_add_element(struct dodo_linked_list* start, size_t hl_line_start,
+                    size_t hl_char_pos_start, size_t hl_line_end,
+                    size_t hl_char_pos_end)
 {
-    // FIXME: it works but i dont like it, could be a simple recursive function
-    struct dodo_linked_list* current_element = nullptr;
-    struct dodo_linked_list* next_element    = nullptr;
-    if (a_ll == nullptr) return -1;
-    if (a_ll->tail)
+    if (start == nullptr) return nullptr;
+    if (start->next != nullptr)
     {
-        free(a_ll);
-        return 0;
+        printf("Already pointing to another element\n");
+        return nullptr;
     }
-    current_element = a_ll->next;
+
+    struct dodo_linked_list* new = dodo_ll_new_node(
+        hl_line_start, hl_char_pos_start, hl_line_end, hl_char_pos_end);
+
+    if (start->next == nullptr)
+    {
+        start->next = new;
+        return new;
+    }
+}
+
+struct dodo_linked_list*
+dodo_ll_add_from_root(struct dodo_linked_list* root, size_t hl_line_start,
+                      size_t hl_char_pos_start, size_t hl_line_end,
+                      size_t hl_char_pos_end)
+{
+    struct dodo_linked_list* a_ll = root;
+    if (a_ll == nullptr) return nullptr;
+    while (a_ll->next != nullptr)
+    {
+        a_ll = a_ll->next;
+    }
+
+    struct dodo_linked_list* new = dodo_ll_new_node(
+        hl_line_start, hl_char_pos_start, hl_line_end, hl_char_pos_end);
+    a_ll->next = new;
+    return new;
+}
+int
+dodo_ll_destroy(struct dodo_linked_list* root)
+{
+    // NOTE: why did i say recursive, all i needed was a loop
+    struct dodo_linked_list* current_element = root;
+    struct dodo_linked_list* next_element    = root->next;
     if (current_element == nullptr) return -1;
     while (next_element != nullptr)
     {
-        next_element =
-            (current_element->tail) ? nullptr : current_element->next;
         free(current_element);
         current_element = next_element;
+        next_element    = current_element->next;
+    }
+    free(current_element);
+}
+
+void
+traverse_ll_and_dump(struct dodo_linked_list* root)
+{
+    if (root == nullptr)
+    {
+        printf("\nNull root.\n");
+        return;
+    }
+    struct dodo_linked_list* a_element = root;
+    while (a_element != nullptr)
+    {
+        printf("\n");
+        printf("Line start: %lu\n", a_element->hl.line_start);
+        printf("Cursor pos start: %lu\n", a_element->hl.char_pos_start);
+        printf("Line end: %lu\n", a_element->hl.line_end);
+        printf("Cursor post end: %lu\n", a_element->hl.char_pos_end);
+        printf("\n");
+        a_element = a_element->next;
     }
 }
 
@@ -309,6 +361,8 @@ main(int argc, char** argv)
      * one stores where the todo starts and the second pass prints
      */
     // printf("%*lu |  ", -3, line_no);
+    struct dodo_linked_list* root = nullptr;
+    struct dodo_linked_list* last = nullptr;
     while ((x = (fgetc(test_file))) != EOF)
     {
         printf("%c", x);
@@ -323,25 +377,37 @@ main(int argc, char** argv)
             if (c_node != nullptr)
             {
                 fgetpos(test_file, &pos);
-                size_t hl_line = line_no;
-                size_t hl_cursor = cursor_pos;
-                size_t hl_line_end = line_no;
+                size_t hl_line       = line_no;
+                size_t hl_cursor     = cursor_pos;
+                size_t hl_line_end   = line_no;
                 size_t hl_cursor_end = cursor_pos;
                 while ((x = fgetc(test_file)) != EOF)
                 {
-                    c_node = dodo_trie_find_child(cool_trie, x);
+                    c_node = dodo_trie_find_child(c_node, x);
                     if (c_node == nullptr)
                     {
+                        // fsetpos(test_file, &pos);
                         break;
                     }
                     if (c_node->bottom == true)
                     {
-                        // STEP: Add the hl_line and hl_cursor values to a linked list
+                        if (root == nullptr)
+                        {
+                            root = dodo_ll_new_node(line_no, cursor_pos,
+                                                    hl_line_end, hl_cursor_end);
+                            last = root;
+                            fsetpos(test_file, &pos);
+                            break;
+                        }
+                        last = dodo_ll_add_element(last, line_no, cursor_pos,
+                                                   hl_line_end, hl_cursor_end);
+
                         fsetpos(test_file, &pos);
+                        break;
                     }
 
                     hl_cursor_end += 1;
-                    if (x =='\n')
+                    if (x == '\n')
                     {
                         hl_line_end += 1;
                         hl_cursor_end = 0;
@@ -354,9 +420,12 @@ main(int argc, char** argv)
         {
             line_no += 1;
             cursor_pos = 0;
+            sl_comment = 0;
         }
-        if (x == '\n') printf("%*lu |  ", -3, line_no);
+        // if (x == '\n') printf("%*lu |  ", -3, line_no);
     }
+    traverse_ll_and_dump(root);
+    dodo_ll_destroy(root);
     fclose(test_file);
 
     dodo_trie_destroy(cool_trie);
