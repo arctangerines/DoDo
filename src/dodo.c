@@ -11,28 +11,43 @@
 #include <wchar.h>
 #include <wordexp.h>
 
-// TODO: Start counting line and position in line
-
-/// For bit flags idea but probably wont use it
-/// Single line comment
-#define SL_COMMENT  0b00000001
-/// Multiline comment
-#define ML_COMMENT  0b00000010
-#define SKIP        0b00000100
-
-// UTF characteristics (thanks to the Unicode spec)
-#define UTF8_4BYTES 0b11110000
-#define UTF8_3BYTES 0b11100000
-#define UTF8_2BYTES 0b11000000
-#define UTF8_1BYTE  0b00000000
-
-// TODO: Add a funciton to determine the length of a UTF-8 char,
-//  this should return the number of bytes to ignore for colored output
-
 size_t
-utf8_length(uint32_t c)
+utf8_length(uint8_t c)
 {
-    // xor the bits
+    // practically saying if theres no set bit at the start ([1]0000000), cancel
+    if (c < 0x80)
+    {
+        // It's held in 1 byte but we dont need to check anything
+        return 1;
+    }
+    // inverse of the bits
+    uint8_t m = 0b0100'0000;
+    // suppse c 0b1011'1010
+    // supps ~c 0b0100'0101
+    // So what we are doing is basically comparing that witht he mask, we are
+    // searching for the 0 that indicates the amount of bytes the utf8 char has
+    // we do it with a 1 inversed
+    // 0b0100'0000
+    // 0b0100'0101
+    //-----------
+    //=0b0100'0000
+
+    uint8_t x = (~c) & m;
+    // shift size IS the byte size, because
+    uint8_t shift_size = 1;
+    // If it's not 1 byte, we start shifting to the right
+    // until we find our 0 (which is a 1 when we !)
+    while (x != m)
+    {
+        shift_size++;
+        m = m >> 1;
+        x = (~c) & m;
+        if (shift_size > 4)
+        {
+            return 0;
+        };
+    }
+    return shift_size;
 }
 
 struct hlInfo
