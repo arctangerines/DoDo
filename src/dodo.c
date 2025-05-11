@@ -11,8 +11,17 @@
 #include <wchar.h>
 #include <wordexp.h>
 
+/*
+ *XXX: As it is, the program saves starting from the ToDo of the coment,
+ * to the end.
+ * Perhaps it should save comment blocks only if the comment block has a todo
+ *REBUTTAL: Although, this could be prettier on terminal, simply saving todo
+ * leads to embracing a "just plain text™️" approach, so we can pass it
+ * to other programs
+ */
+
 size_t
-utf8_length(uint8_t c)
+utf8_length(const uint8_t c)
 {
     // practically saying if theres no set bit at the start ([1]0000000), cancel
     if (c < 0x80)
@@ -73,8 +82,10 @@ struct dodoList
 /// Make an arbitrary element and return it, good for starting a linked list
 /// @param hl_line_start: Line to start the highlight from
 struct dodoList*
-dodo_ll_new_element(size_t hl_line_start, size_t hl_line_pos_start,
-                    size_t hl_line_end, size_t hl_line_pos_end)
+dodo_ll_new_element(size_t hl_line_start,
+                    size_t hl_line_pos_start,
+                    size_t hl_line_end,
+                    size_t hl_line_pos_end)
 {
     struct dodoList* a_ll   = malloc(sizeof(struct dodoList));
     a_ll->hl.line_start     = hl_line_start;
@@ -86,9 +97,11 @@ dodo_ll_new_element(size_t hl_line_start, size_t hl_line_pos_start,
 }
 
 struct dodoList*
-dodo_ll_add_element(struct dodoList* start, size_t hl_line_start,
-                    size_t hl_line_pos_start, size_t hl_line_end,
-                    size_t hl_line_pos_end)
+dodo_ll_add_element(struct dodoList* start,
+                    size_t           hl_line_start,
+                    size_t           hl_line_pos_start,
+                    size_t           hl_line_end,
+                    size_t           hl_line_pos_end)
 {
     if (start == nullptr) return nullptr;
     if (start->next != nullptr)
@@ -106,10 +119,14 @@ dodo_ll_add_element(struct dodoList* start, size_t hl_line_start,
     }
 }
 
+// FIXME: Maybe this should be the default way to add elements,
+// we add a pointer to the end at the start? Now that im writing, it seems bad
 struct dodoList*
-dodo_ll_add_from_root(struct dodoList* root, size_t hl_line_start,
-                      size_t hl_line_pos_start, size_t hl_line_end,
-                      size_t hl_line_pos_end)
+dodo_ll_add_from_root(struct dodoList* root,
+                      size_t           hl_line_start,
+                      size_t           hl_line_pos_start,
+                      size_t           hl_line_end,
+                      size_t           hl_line_pos_end)
 {
     struct dodoList* a_ll = root;
     if (a_ll == nullptr) return nullptr;
@@ -177,7 +194,9 @@ ck_add_key(struct commentKeys* ck)
 
 /// @param c: char we are looking for
 bool
-simple_look_ahead(char c, FILE* f, fpos_t* pos)
+simple_look_ahead(char    c,
+                  FILE*   f,
+                  fpos_t* pos)
 {
     fgetpos(f, pos);
     // L for lookahead
@@ -320,7 +339,8 @@ create_config_files()
  * forget)
  */
 int
-main(int argc, char** argv)
+main(int    argc,
+     char** argv)
 {
     // FILE* config_file = fopen("./testfig/dodofile", "a+");
 
@@ -376,6 +396,8 @@ main(int argc, char** argv)
     size_t line_no = 1;
     // Position of cursor
     size_t cursor_pos = 0;
+    // last value of the cursor in previous line
+    size_t cursor_pos_prev = 0;
     // printf("%*lu |  ", -3, line_no);
     /* It should have a lookahead concept but not for a word or a char
      * but for comment lines, also I think this should be done in 2 passes,
@@ -387,9 +409,9 @@ main(int argc, char** argv)
 
     size_t hl_line_start   = line_no;
     size_t hl_cursor_start = cursor_pos;
-    size_t hl_line_end     = line_no;
-    size_t hl_cursor_end   = cursor_pos;
-    bool   keyword_found   = false;
+    // size_t hl_line_end     = line_no;
+    // size_t hl_cursor_end   = cursor_pos;
+    bool keyword_found = false;
     while ((x = (fgetc(test_file))) != EOF)
     {
         printf("%c", x);
@@ -404,7 +426,7 @@ main(int argc, char** argv)
                 ml_comment = true;
             }
         }
-        if ((sl_comment || ml_comment))
+        if (sl_comment || ml_comment)
         {
             // Current node
             struct dodoTrieNode* c_node = dodo_trie_find_child(cool_trie, x);
@@ -413,11 +435,15 @@ main(int argc, char** argv)
                 fgetpos(test_file, &pos);
                 hl_line_start   = line_no;
                 hl_cursor_start = cursor_pos;
-                hl_line_end     = line_no;
-                hl_cursor_end   = cursor_pos;
+                // hl_line_end     = line_no;
+                // hl_cursor_end   = cursor_pos;
                 while ((x = fgetc(test_file)) != EOF)
                 {
                     c_node = dodo_trie_find_child(c_node, x);
+                    // we can put it on top because it's not the first value
+                    cursor_pos++;
+                    // In theory no keyword should contain the char '\n'
+                    // if (x =='\n') line_no++; cursor_pos=0;
                     if (c_node == nullptr)
                     {
                         fsetpos(test_file, &pos);
@@ -430,67 +456,70 @@ main(int argc, char** argv)
                     }
                 }
             }
-            // FIXME: Reduce this code to a smaller size, its not legible
-            if (keyword_found)
-            {
-                if (x == '\n' && sl_comment)
-                {
-                    keyword_found = false;
-                    sl_comment    = 0;
-                    if (root == nullptr)
-                    {
-                        root =
-                            dodo_ll_new_element(hl_line_start, hl_cursor_start,
-                                                hl_line_end, hl_cursor_end);
-                        last       = root;
-                        line_no    = hl_line_end + 1;
-                        cursor_pos = 0;
-                        continue;
-                    }
-                    last       = dodo_ll_add_element(last, hl_line_start,
-                                                     hl_cursor_start, hl_line_end,
-                                                     hl_cursor_end);
-
-                    line_no    = hl_line_end + 1;
-                    cursor_pos = 0;
-
-                    continue;
-                }
-                if (x == '*' && ml_comment)
-                {
-                    if (simple_look_ahead('/', test_file, &pos))
-                    {
-                        ml_comment    = 0;
-                        keyword_found = false;
-                        if (root == nullptr)
-                        {
-                            root = dodo_ll_new_element(
-                                hl_line_start, hl_cursor_start, hl_line_end,
-                                hl_cursor_end);
-                            last = root;
-                            // Stays the same
-                            //FIXME: I think the way we use line_no and
-                            // cursor_pos can be changed
-                            line_no    = hl_line_end;
-                            cursor_pos = hl_cursor_end;
-                            continue;
-                        }
-                        last = dodo_ll_add_element(last, hl_line_start,
-                                                   hl_cursor_start, hl_line_end,
-                                                   hl_cursor_end);
-                        continue;
-                    }
-                }
-                hl_cursor_end += 1;
-                if (x == '\n' && !sl_comment) hl_line_end += 1;
-            }
         }
-        cursor_pos += 1;
+
         if (x == '\n')
         {
-            if (sl_comment) sl_comment = 0;
+            if (sl_comment)
+            {
+                sl_comment = 0;
+                if (keyword_found)
+                {
+                    last          = (last == nullptr)
+                                        ? (root = dodo_ll_new_element(
+                                      hl_line_start, hl_cursor_start, line_no,
+                                      cursor_pos))
+                                        : dodo_ll_add_element(last, hl_line_start,
+                                                              hl_cursor_start, line_no,
+                                                              cursor_pos);
+
+                    keyword_found = false;
+                }
+            }
             line_no += 1;
-            cursor_pos = 0;
+            cursor_pos_prev = cursor_pos;
+            cursor_pos      = 0;
+        }
+        else if (x == '*')
+        {
+            if (ml_comment)
+            {
+                if (simple_look_ahead('/', test_file, &pos))
+                {
+                    ml_comment = false;
+                }
+                if (keyword_found)
+                {
+                    // we make this variable so we dont have to touch cursor pos
+                    // since multiline comments end in */, the last value of
+                    // them will be the position before the *
+                    // BUG? What if user leaves a bunch of whitespace before
+                    // */ instead of a newline
+                    size_t hl_cursor_end;
+                    // multiline commend ends at the start of a newline
+                    if (cursor_pos == 0)
+                    {
+                        hl_cursor_end = cursor_pos_prev;
+                    }
+                    else
+                    {
+                        hl_cursor_end = cursor_pos--;
+                    }
+                    last          = (last == nullptr)
+                                        ? (root = dodo_ll_new_element(
+                                      hl_line_start, hl_cursor_start, line_no,
+                                      cursor_pos))
+                                        : dodo_ll_add_element(last, hl_line_start,
+                                                              hl_cursor_start, line_no,
+                                                              hl_cursor_end);
+
+                    keyword_found = false;
+                }
+            }
+        }
+        else
+        {
+            cursor_pos += 1;
         }
         // if (x == '\n') printf("%*lu |  ", -3, line_no);
     }

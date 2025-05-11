@@ -13,7 +13,7 @@ AlignConsecutiveDeclarations: Consecutive
 #AlignTrailingComments: true
 #AllowAllArgumentsOnNextLine: true
 #AllowAllConstructorInitializersOnNextLine: true
-#AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: true
 #AllowShortEnumsOnASingleLine: true
 #AllowShortBlocksOnASingleLine: Never
 #AllowShortCaseLabelsOnASingleLine: false
@@ -28,7 +28,7 @@ AlwaysBreakTemplateDeclarations: Yes
 #AttributeMacros:
 #  - __capability
 #BinPackArguments: false
-#BinPackParameters: false
+BinPackParameters: AlwaysOnePerLine
 #BraceWrapping:
 # AfterCaseLabel:  false
 # AfterClass:      false
