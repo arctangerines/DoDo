@@ -458,23 +458,48 @@ main(int    argc,
             }
         }
 
+        if (keyword_found && !(sl_comment || ml_comment))
+        {
+            size_t hl_cursor_end = cursor_pos;
+            size_t hl_line_end   = line_no;
+            // we make this variable so we dont have to touch cursor pos
+            // since multiline comments end in */, the last value of
+            // them will be the position before the *
+            // BUG? What if user leaves a bunch of whitespace before
+            // */ instead of a newline
+            // multiline commend ends at the start of a newline
+            if (hl_cursor_end == 0)
+            {
+                printf("----------------------\nCursor pos: %lu\n",
+                       hl_cursor_end);
+                hl_cursor_end = cursor_pos_prev;
+                hl_line_end   = line_no - 1;
+            }
+            else
+            {
+                // Ending char is going to be * or \n, if its * we did a
+                // lookahead so now we must move behind by 1 if its \n, then we
+                // have to print the last char before it
+                hl_cursor_end = cursor_pos--;
+                printf("\n\n----------------------\nCursor pos: %lu\n",
+                       hl_cursor_end);
+            }
+            last =
+                (last == nullptr)
+                    ? (root =
+                           dodo_ll_new_element(hl_line_start, hl_cursor_start,
+                                               hl_line_end, hl_cursor_end))
+                    : dodo_ll_add_element(last, hl_line_start, hl_cursor_start,
+                                          hl_line_end, hl_cursor_end);
+
+            keyword_found = false;
+        }
+
         if (x == '\n')
         {
             if (sl_comment)
             {
                 sl_comment = 0;
-                if (keyword_found)
-                {
-                    last          = (last == nullptr)
-                                        ? (root = dodo_ll_new_element(
-                                      hl_line_start, hl_cursor_start, line_no,
-                                      cursor_pos))
-                                        : dodo_ll_add_element(last, hl_line_start,
-                                                              hl_cursor_start, line_no,
-                                                              cursor_pos);
-
-                    keyword_found = false;
-                }
             }
             line_no += 1;
             cursor_pos_prev = cursor_pos;
@@ -488,39 +513,13 @@ main(int    argc,
                 {
                     ml_comment = false;
                 }
-                if (keyword_found)
-                {
-                    // we make this variable so we dont have to touch cursor pos
-                    // since multiline comments end in */, the last value of
-                    // them will be the position before the *
-                    // BUG? What if user leaves a bunch of whitespace before
-                    // */ instead of a newline
-                    size_t hl_cursor_end;
-                    // multiline commend ends at the start of a newline
-                    if (cursor_pos == 0)
-                    {
-                        hl_cursor_end = cursor_pos_prev;
-                    }
-                    else
-                    {
-                        hl_cursor_end = cursor_pos--;
-                    }
-                    last          = (last == nullptr)
-                                        ? (root = dodo_ll_new_element(
-                                      hl_line_start, hl_cursor_start, line_no,
-                                      cursor_pos))
-                                        : dodo_ll_add_element(last, hl_line_start,
-                                                              hl_cursor_start, line_no,
-                                                              hl_cursor_end);
-
-                    keyword_found = false;
-                }
             }
         }
         else
         {
             cursor_pos += 1;
         }
+
         // if (x == '\n') printf("%*lu |  ", -3, line_no);
     }
     dump_ll(root);
