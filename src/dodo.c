@@ -53,9 +53,9 @@ utf8_length(uint8_t c)
 struct hlInfo
 {
     size_t line_start;
-    size_t char_pos_start;
+    size_t line_pos_start;
     size_t line_end;
-    size_t char_pos_end;
+    size_t line_pos_end;
 };
 
 /*TODO: For linked list
@@ -64,28 +64,31 @@ struct hlInfo
  */
 // FIXME: names names names names names, theyre all ugly
 // this could easily be made for arbitraryd ata types lmfao
-struct dodo_linked_list
+struct dodoList
 {
-    struct hlInfo            hl;
-    struct dodo_linked_list* next;
+    struct hlInfo    hl;
+    struct dodoList* next;
 };
 
-struct dodo_linked_list*
-dodo_ll_new_node(size_t hl_line_start, size_t hl_char_pos_start,
-                 size_t hl_line_end, size_t hl_char_pos_end)
+/// Make an arbitrary element and return it, good for starting a linked list
+/// @param hl_line_start: Line to start the highlight from
+struct dodoList*
+dodo_ll_new_element(size_t hl_line_start, size_t hl_line_pos_start,
+                    size_t hl_line_end, size_t hl_line_pos_end)
 {
-    struct dodo_linked_list* a_ll = malloc(sizeof(struct dodo_linked_list));
-    a_ll->hl.line_start           = hl_line_start;
-    a_ll->hl.char_pos_start       = hl_char_pos_start;
-    a_ll->hl.line_end             = hl_line_end;
-    a_ll->hl.char_pos_end         = hl_char_pos_end;
-    a_ll->next                    = nullptr;
+    struct dodoList* a_ll   = malloc(sizeof(struct dodoList));
+    a_ll->hl.line_start     = hl_line_start;
+    a_ll->hl.line_pos_start = hl_line_pos_start;
+    a_ll->hl.line_end       = hl_line_end;
+    a_ll->hl.line_pos_end   = hl_line_pos_end;
+    a_ll->next              = nullptr;
     return a_ll;
 }
-struct dodo_linked_list*
-dodo_ll_add_element(struct dodo_linked_list* start, size_t hl_line_start,
-                    size_t hl_char_pos_start, size_t hl_line_end,
-                    size_t hl_char_pos_end)
+
+struct dodoList*
+dodo_ll_add_element(struct dodoList* start, size_t hl_line_start,
+                    size_t hl_line_pos_start, size_t hl_line_end,
+                    size_t hl_line_pos_end)
 {
     if (start == nullptr) return nullptr;
     if (start->next != nullptr)
@@ -94,9 +97,8 @@ dodo_ll_add_element(struct dodo_linked_list* start, size_t hl_line_start,
         return nullptr;
     }
 
-    struct dodo_linked_list* new = dodo_ll_new_node(
-        hl_line_start, hl_char_pos_start, hl_line_end, hl_char_pos_end);
-
+    struct dodoList* new = dodo_ll_new_element(hl_line_start, hl_line_pos_start,
+                                               hl_line_end, hl_line_pos_end);
     if (start->next == nullptr)
     {
         start->next = new;
@@ -104,29 +106,32 @@ dodo_ll_add_element(struct dodo_linked_list* start, size_t hl_line_start,
     }
 }
 
-struct dodo_linked_list*
-dodo_ll_add_from_root(struct dodo_linked_list* root, size_t hl_line_start,
-                      size_t hl_char_pos_start, size_t hl_line_end,
-                      size_t hl_char_pos_end)
+struct dodoList*
+dodo_ll_add_from_root(struct dodoList* root, size_t hl_line_start,
+                      size_t hl_line_pos_start, size_t hl_line_end,
+                      size_t hl_line_pos_end)
 {
-    struct dodo_linked_list* a_ll = root;
+    struct dodoList* a_ll = root;
     if (a_ll == nullptr) return nullptr;
     while (a_ll->next != nullptr)
     {
         a_ll = a_ll->next;
     }
 
-    struct dodo_linked_list* new = dodo_ll_new_node(
-        hl_line_start, hl_char_pos_start, hl_line_end, hl_char_pos_end);
-    a_ll->next = new;
+    struct dodoList* new = dodo_ll_new_element(hl_line_start, hl_line_pos_start,
+                                               hl_line_end, hl_line_pos_end);
+    a_ll->next           = new;
     return new;
 }
+
+/// Traverse from the root to the end of the linked list, deallocate
+/// elements as we go
 int
-dodo_ll_destroy(struct dodo_linked_list* root)
+dodo_ll_destroy(struct dodoList* root)
 {
     // NOTE: why did i say recursive, all i needed was a loop
-    struct dodo_linked_list* current_element = root;
-    struct dodo_linked_list* next_element    = root->next;
+    struct dodoList* current_element = root;
+    struct dodoList* next_element    = root->next;
     if (current_element == nullptr) return -1;
     while (next_element != nullptr)
     {
@@ -135,24 +140,25 @@ dodo_ll_destroy(struct dodo_linked_list* root)
         next_element    = current_element->next;
     }
     free(current_element);
+    return 0;
 }
 
 void
-traverse_ll_and_dump(struct dodo_linked_list* root)
+dump_ll(struct dodoList* root)
 {
     if (root == nullptr)
     {
         printf("\nNull root.\n");
         return;
     }
-    struct dodo_linked_list* a_element = root;
+    struct dodoList* a_element = root;
     while (a_element != nullptr)
     {
         printf("\n");
         printf("Line start: %lu\n", a_element->hl.line_start);
-        printf("Cursor pos start: %lu\n", a_element->hl.char_pos_start);
+        printf("Cursor pos start: %lu\n", a_element->hl.line_pos_start);
         printf("Line end: %lu\n", a_element->hl.line_end);
-        printf("Cursor post end: %lu\n", a_element->hl.char_pos_end);
+        printf("Cursor post end: %lu\n", a_element->hl.line_pos_end);
         printf("\n");
         a_element = a_element->next;
     }
@@ -376,70 +382,119 @@ main(int argc, char** argv)
      * one stores where the todo starts and the second pass prints
      */
     // printf("%*lu |  ", -3, line_no);
-    struct dodo_linked_list* root = nullptr;
-    struct dodo_linked_list* last = nullptr;
+    struct dodoList* root  = nullptr;
+    struct dodoList* last  = nullptr;
+
+    size_t hl_line_start   = line_no;
+    size_t hl_cursor_start = cursor_pos;
+    size_t hl_line_end     = line_no;
+    size_t hl_cursor_end   = cursor_pos;
+    bool   keyword_found   = false;
     while ((x = (fgetc(test_file))) != EOF)
     {
         printf("%c", x);
-        if (x == '#')
+        if (x == '#' && !ml_comment)
         {
             sl_comment = 1;
+        }
+        if (x == '/' && !sl_comment)
+        {
+            if (simple_look_ahead('*', test_file, &pos))
+            {
+                ml_comment = true;
+            }
         }
         if ((sl_comment || ml_comment))
         {
             // Current node
             struct dodoTrieNode* c_node = dodo_trie_find_child(cool_trie, x);
-            if (c_node != nullptr)
+            if (c_node != nullptr && !keyword_found)
             {
                 fgetpos(test_file, &pos);
-                size_t hl_line       = line_no;
-                size_t hl_cursor     = cursor_pos;
-                size_t hl_line_end   = line_no;
-                size_t hl_cursor_end = cursor_pos;
+                hl_line_start   = line_no;
+                hl_cursor_start = cursor_pos;
+                hl_line_end     = line_no;
+                hl_cursor_end   = cursor_pos;
                 while ((x = fgetc(test_file)) != EOF)
                 {
                     c_node = dodo_trie_find_child(c_node, x);
                     if (c_node == nullptr)
                     {
-                        // fsetpos(test_file, &pos);
+                        fsetpos(test_file, &pos);
                         break;
                     }
                     if (c_node->bottom == true)
                     {
-                        if (root == nullptr)
-                        {
-                            root = dodo_ll_new_node(line_no, cursor_pos,
-                                                    hl_line_end, hl_cursor_end);
-                            last = root;
-                            fsetpos(test_file, &pos);
-                            break;
-                        }
-                        last = dodo_ll_add_element(last, line_no, cursor_pos,
-                                                   hl_line_end, hl_cursor_end);
-
-                        fsetpos(test_file, &pos);
+                        keyword_found = true;
                         break;
                     }
-
-                    hl_cursor_end += 1;
-                    if (x == '\n')
+                }
+            }
+            // FIXME: Reduce this code to a smaller size, its not legible
+            if (keyword_found)
+            {
+                if (x == '\n' && sl_comment)
+                {
+                    keyword_found = false;
+                    sl_comment    = 0;
+                    if (root == nullptr)
                     {
-                        hl_line_end += 1;
-                        hl_cursor_end = 0;
+                        root =
+                            dodo_ll_new_element(hl_line_start, hl_cursor_start,
+                                                hl_line_end, hl_cursor_end);
+                        last       = root;
+                        line_no    = hl_line_end + 1;
+                        cursor_pos = 0;
+                        continue;
+                    }
+                    last       = dodo_ll_add_element(last, hl_line_start,
+                                                     hl_cursor_start, hl_line_end,
+                                                     hl_cursor_end);
+
+                    line_no    = hl_line_end + 1;
+                    cursor_pos = 0;
+
+                    continue;
+                }
+                if (x == '*' && ml_comment)
+                {
+                    if (simple_look_ahead('/', test_file, &pos))
+                    {
+                        ml_comment    = 0;
+                        keyword_found = false;
+                        if (root == nullptr)
+                        {
+                            root = dodo_ll_new_element(
+                                hl_line_start, hl_cursor_start, hl_line_end,
+                                hl_cursor_end);
+                            last = root;
+                            // Stays the same
+                            //FIXME: I think the way we use line_no and
+                            // cursor_pos can be changed
+                            line_no    = hl_line_end;
+                            cursor_pos = hl_cursor_end;
+                            continue;
+                        }
+                        last = dodo_ll_add_element(last, hl_line_start,
+                                                   hl_cursor_start, hl_line_end,
+                                                   hl_cursor_end);
+                        continue;
                     }
                 }
+                hl_cursor_end += 1;
+                if (x == '\n' && !sl_comment) hl_line_end += 1;
             }
         }
         cursor_pos += 1;
         if (x == '\n')
         {
+            if (sl_comment) sl_comment = 0;
             line_no += 1;
             cursor_pos = 0;
-            sl_comment = 0;
         }
         // if (x == '\n') printf("%*lu |  ", -3, line_no);
     }
-    traverse_ll_and_dump(root);
+    dump_ll(root);
     dodo_ll_destroy(root);
     fclose(test_file);
 
