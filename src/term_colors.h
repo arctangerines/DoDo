@@ -10,8 +10,9 @@
 #define STEELBLUE    "\033[1m\033[38;5;75m"
 #define NOTESGREEN   "\033[1m\033[38;5;76m"
 #define THINKING     "\033[7m\033[38;5;87m"
-#define PRETTYPURPLE "\033[38;5;91m"
-#define FILEPATH     "\033[1m\033[4m\033[38;5;91m"
+#define EVILPURPLE   "\033[38;5;91m"
+#define PRETTYPURPLE "\033[38;5;99m"
+#define FILEPATH     "\033[1m\033[4m\033[38;5;99m"
 #define SKY          "\033[38;5;44m"
 
 // Reset

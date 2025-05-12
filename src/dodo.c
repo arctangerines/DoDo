@@ -243,6 +243,11 @@ new_key_group(char*  ext,
     size_t key_size = 0;
     while (keys[key_size] != nullptr)
     {
+        if (strcmp(keys[key_size], "") == 0)
+        {
+            printf("Empty string as comment key...\n");
+            exit(-1);
+        }
         key_size++;
     }
     // so it's len, not index
@@ -278,6 +283,8 @@ new_key_group(char*  ext,
 /// @param c: char we are looking for
 /// @param f: file we are working with
 /// @param pos: pos_t var we are using to preserve our position
+/// FIXME: Make a lookahead that looks n amount of chars ahead, for comment keys
+/** TODO: l**/
 bool
 simple_look_ahead(char    c,
                   FILE*   f,
@@ -294,6 +301,42 @@ simple_look_ahead(char    c,
     }
     fsetpos(f, pos);
     return false;
+}
+/// If n < k_len then we will start at index len - n
+/// Its like saying how many n last characters we want to read
+/// Useful because we might have read
+bool
+n_look_ahead(size_t  n,
+             char*   k,
+             FILE*   f,
+             fpos_t* pos)
+{
+    fgetpos(f, pos);
+    // l for lookahead;
+    int    l;
+    size_t len = strlen(k);
+    if (n > len)
+    {
+        printf("Trying to read more than available\n");
+    }
+    size_t i = 0;
+    while ((l = fgetc(f)) != EOF)
+    {
+        if (l != k[i])
+        {
+            // if we dont find the char we are looking for, go back
+            fsetpos(f, pos);
+            return false;
+        }
+        i++;
+        if (i == n)
+        {
+            break;
+        }
+    }
+    fsetpos(f, pos);
+
+    return true;
 }
 
 // TODO: Look at error codes in the C/GNU way thinking emoji
@@ -458,11 +501,16 @@ main(int    argc,
     dodo_trie_add_keyword(cool_trie, "STEP", BOLDTERM SKY);
     // dodo_trie_add_keyword(cool_trie, "🧬");
 
-    FILE*              test_file = fopen(argv[1], "r");
-    char*              ext       = strrchr(argv[1], '.');
+    FILE* test_file = fopen(argv[1], "r");
+    if (!test_file)
+    {
+        printf("Error [%i]: [%hs] when opening file...\n", errno,
+               strerror(errno));
+    }
+    char*              ext = strrchr(argv[1], '.');
     struct commentKeys ck;
     char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
-    char*              py_keys_temp[] = {"#", nullptr};
+    char*              py_keys_temp[] = {"##", "\"\"\"", "\"\"\"", nullptr};
     // printf("ext: %s\n", ext);
     if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 ||
         strcmp(ext, ".cxx") == 0)
@@ -473,10 +521,10 @@ main(int    argc,
     {
         ck = new_key_group(ext, py_keys_temp);
     }
-    if (!test_file)
+    else
     {
-        printf("Error [%i]: [%hs] when opening file...\n", errno,
-               strerror(errno));
+        printf("Unsupported filetype");
+        exit(-1);
     }
 
     /*MORSEL: Cool thing about unicode
@@ -518,44 +566,48 @@ main(int    argc,
     while ((x = (fgetc(test_file))) != EOF)
     {
         // FIXME: these conditions can be made more readable by using struts
-        if (x == ck.sl_key[0] && !ml_comment)
+        if (x == ck.sl_key[0] && !ml_comment && !sl_comment)
         {
-            // if the comment key is more than a char, for example python is #
-            // and c is //
-            if (ck.multichar)
-            {
-                if (simple_look_ahead(ck.sl_key[0], test_file, &pos))
-                {
-                    hl_line_start   = line_no;
-                    hl_cursor_start = cursor_pos;
-                    sl_comment      = true;
-                }
-            }
-            else
+            size_t key_len = strlen(ck.sl_key);
+            // The idea here is to add offsets of +- 1 since we already consumed
+            // a char
+            sl_comment =
+                (key_len > 1)
+                    ? n_look_ahead(key_len - 1, ck.sl_key + 1, test_file, &pos)
+                    : true;
+            if (sl_comment)
             {
                 hl_line_start   = line_no;
                 hl_cursor_start = cursor_pos;
-                sl_comment      = true;
             }
         }
-        if (ck.multiline && x == ck.ml_start_keys[0] && !sl_comment)
+        if (ck.multiline && x == ck.ml_start_keys[0] && !sl_comment &&
+            !ml_comment)
         {
-            if (ck.multichar)
+            size_t key_len = strlen(ck.ml_start_keys);
+            ml_comment     = (key_len > 1)
+                                 ? n_look_ahead(key_len - 1, ck.ml_start_keys + 1,
+                                                test_file, &pos)
+                                 : true;
+            if (ml_comment)
             {
-                // Perhaps we can do some clever looping here so we dont assume
-                // the length of the key
-                if (simple_look_ahead(ck.ml_start_keys[1], test_file, &pos))
-                {
-                    hl_line_start   = line_no;
-                    hl_cursor_start = cursor_pos;
-                    ml_comment      = true;
-                }
-            }
-            else
-            {
+                // offset by how much we moved
+                // cursor_pos += key_len - 1;
                 hl_line_start   = line_no;
                 hl_cursor_start = cursor_pos;
-                ml_comment      = true;
+                // only needed for multiline because it might have to look for
+                // the same characters so we dont want it to enable it and
+                // disable it instantly since x didnt move
+                // it's like nudging a little
+                // FIXME: Candidate for reimplementation
+                x = fgetc(test_file);
+                // no idea why this would happen
+                if (x == '\n')
+                {
+                    line_no++;
+                    cursor_pos = 0;
+                }
+                cursor_pos++;
             }
         }
         if ((sl_comment || ml_comment) && !keyword_found)
@@ -601,23 +653,21 @@ main(int    argc,
             }
         }
 
-        if (ck.multiline)
+        if (ml_comment && x == ck.ml_end_keys[0])
         {
-            if (x == ck.ml_end_keys[0])
+            size_t key_len = strlen(ck.ml_end_keys);
+            // inverse because if we dont find the char ahead, we want to keep
+            // it on but if we do find it we want to turn off this
+            ml_comment = (key_len > 1)
+                             ? !(n_look_ahead(key_len - 1, ck.ml_end_keys + 1,
+                                              test_file, &pos))
+                             : false;
+            if (!ml_comment)
             {
-                if (ml_comment)
-                {
-                    if (ck.multichar)
-                    {
-                        if (simple_look_ahead(ck.ml_end_keys[1], test_file,
-                                              &pos))
-                        {
-                            ml_comment    = false;
-                            hl_line_end   = line_no;
-                            hl_cursor_end = cursor_pos + 1;
-                        }
-                    }
-                }
+                hl_line_end = line_no;
+                // we looked ahead and it ends on key_len - 1 chars
+                // aka if its 2, it ends on the next char
+                hl_cursor_end = cursor_pos + (key_len - 1);
             }
         }
         if (x == '\n')
@@ -659,6 +709,7 @@ main(int    argc,
     }
     else
     {
+        // dump_ll(root);
         // reset file position
         rewind(test_file);
         cursor_pos = 0;
