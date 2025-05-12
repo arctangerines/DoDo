@@ -255,10 +255,14 @@ new_key_group(char*  ext,
     }
     else if (key_size == 2)
     {
-        ck.ml_start_keys = keys[0];
+        ck.sl_key = keys[0];
         if (strlen(keys[0]) == 1)
         {
             ck.multichar = false;
+        }
+        else
+        {
+            ck.multichar = true;
         }
         ck.multiline = false;
     }
@@ -454,12 +458,21 @@ main(int    argc,
     dodo_trie_add_keyword(cool_trie, "STEP", BOLDTERM SKY);
     // dodo_trie_add_keyword(cool_trie, "🧬");
 
-    FILE* test_file = fopen(argv[1], "r");
-    char* ext       = strrchr(argv[1], '.');
-    // char  keys_temp[][] = {"#", nullptr};
-    // always 4 elements
-    char*              keys_temp[] = {"//", "/*", "*/", nullptr};
-    struct commentKeys ck          = new_key_group(ext, keys_temp);
+    FILE*              test_file = fopen(argv[1], "r");
+    char*              ext       = strrchr(argv[1], '.');
+    struct commentKeys ck;
+    char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
+    char*              py_keys_temp[] = {"#", nullptr};
+    // printf("ext: %s\n", ext);
+    if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 ||
+        strcmp(ext, ".cxx") == 0)
+    {
+        ck = new_key_group(ext, c_keys_temp);
+    }
+    else if (strcmp(ext, ".py") == 0)
+    {
+        ck = new_key_group(ext, py_keys_temp);
+    }
     if (!test_file)
     {
         printf("Error [%i]: [%hs] when opening file...\n", errno,
@@ -480,33 +493,19 @@ main(int    argc,
     bool sl_comment = false;
     /// Multiline comment
     bool   ml_comment = false;
-    bool   hl_mode    = false;
     fpos_t pos;
-    /// This variable is going to tell us how many letters to skip
-    size_t skip     = 0;
-    size_t inc_skip = 0;
 
     // Line number we are at
     size_t line_no = 1;
     // Position of cursor
-    size_t cursor_pos = 0;
-    // last value of the cursor in previous line
-    size_t cursor_pos_prev = 0;
-    // value of the previous line
-    size_t line_no_prev = 0;
-    // printf("%*lu |  ", -3, line_no);
-    /* It should have a lookahead concept but not for a word or a char
-     * but for comment lines, also I think this should be done in 2 passes,
-     * one stores where the todo starts and the second pass prints
-     */
-    // printf("%*lu |  ", -3, line_no);
-    struct dodoList* root  = nullptr;
-    struct dodoList* last  = nullptr;
+    size_t           cursor_pos = 0;
+    struct dodoList* root       = nullptr;
+    struct dodoList* last       = nullptr;
 
-    size_t hl_line_start   = line_no;
-    size_t hl_cursor_start = cursor_pos;
-    size_t hl_line_end     = line_no;
-    size_t hl_cursor_end   = cursor_pos;
+    size_t hl_line_start        = line_no;
+    size_t hl_cursor_start      = cursor_pos;
+    size_t hl_line_end          = line_no;
+    size_t hl_cursor_end        = cursor_pos;
     // based on cursor
     size_t hl_word_cursor_start = 0;
     size_t hl_word_cursor_end   = 0;
@@ -571,9 +570,14 @@ main(int    argc,
                 hl_word_line_start   = line_no;
                 hl_word_line_end     = line_no;
                 // cursor_pos++;
-                while ((x = fgetc(test_file)) != EOF)
+                // It was causing a bug where if the last cahracter was in the
+                // trie then it would search the next would find a newline
+                // so it would break but \n was saved on x so it would then
+                // then execute our newline path so now below
+                int m;
+                while ((m = fgetc(test_file)) != EOF)
                 {
-                    a_node = dodo_trie_find_child(a_node, x);
+                    a_node = dodo_trie_find_child(a_node, m);
                     hl_word_cursor_end++;
                     if (a_node == nullptr)
                     {
@@ -597,17 +601,21 @@ main(int    argc,
             }
         }
 
-        if (x == ck.ml_end_keys[0])
+        if (ck.multiline)
         {
-            if (ml_comment)
+            if (x == ck.ml_end_keys[0])
             {
-                if (ck.multichar)
+                if (ml_comment)
                 {
-                    if (simple_look_ahead(ck.ml_end_keys[1], test_file, &pos))
+                    if (ck.multichar)
                     {
-                        ml_comment    = false;
-                        hl_line_end   = line_no;
-                        hl_cursor_end = cursor_pos + 1;
+                        if (simple_look_ahead(ck.ml_end_keys[1], test_file,
+                                              &pos))
+                        {
+                            ml_comment    = false;
+                            hl_line_end   = line_no;
+                            hl_cursor_end = cursor_pos + 1;
+                        }
                     }
                 }
             }
@@ -644,97 +652,102 @@ main(int    argc,
             keyword_found = false;
         }
     }
-    // dump_ll(root);
     struct dodoList* a_list = root;
-    // reset file position
-    rewind(test_file);
-    cursor_pos = 0;
-    line_no    = 1;
-    // we are printing chars
-    bool printing = false;
-    bool coloring = false;
-    // skip whitespace
-    bool   skip_ws   = false;
-    int    prev_char = 0;
-    fpos_t pos1;
-    fpos_t pos2;
-    while ((x = fgetc(test_file)) != EOF)
+    if (a_list == nullptr)
     {
-        if (!printing)
-        {
-            if (line_no == a_list->hl.line_start)
-            {
-                if (cursor_pos == a_list->hl.line_pos_start)
-                {
-                    // Tell user where the todo word starts not the comment
-                    printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
-                           a_list->hl.hl_word_line_start,
-                           a_list->hl.hl_word_cursor_start + 1);
-                    printf("%*lu |  ", -3, line_no);
-                    printing = true;
-                }
-            }
-        }
-        if (a_list->hl.hl_word_cursor_start == cursor_pos &&
-            a_list->hl.hl_word_line_start == line_no)
-        {
-            coloring = true;
-        }
-        if (printing)
-        {
-
-            if ((prev_char == ' ' || prev_char == '\t') &&
-                (x == ' ' || prev_char == '\t'))
-            {
-                skip_ws = true;
-            }
-            if (!skip_ws)
-            {
-                if (coloring)
-                {
-                    printf(a_list->hl.hl_color);
-                }
-                printf("%c", x);
-                if (a_list->hl.hl_word_cursor_end == cursor_pos &&
-                    a_list->hl.hl_word_line_end == line_no)
-                {
-                    printf(CRESET);
-                    coloring = false;
-                }
-            }
-            if (skip_ws && !(x == ' ' || x == '\t'))
-            {
-                skip_ws = false;
-                printf("%c", x);
-            }
-            if (line_no == a_list->hl.line_end)
-            {
-                if (cursor_pos == a_list->hl.line_pos_end)
-                {
-                    printing = false;
-                    a_list   = a_list->next;
-                    printf("\n");
-                    printf("\n");
-                }
-            }
-        }
-        if (a_list == nullptr) break;
-        cursor_pos++;
-        if (x == '\n')
-        {
-            line_no++;
-            cursor_pos = 0;
-        }
-        if (printing && x == '\n')
-        {
-            printf("%*lu |  ", -3, line_no);
-        }
-        prev_char = x;
-        fgetpos(test_file, &pos1);
+        printf("No ToDo's here...!\n");
     }
-    dodo_ll_destroy(root);
-    fclose(test_file);
+    else
+    {
+        // reset file position
+        rewind(test_file);
+        cursor_pos = 0;
+        line_no    = 1;
+        // we are printing chars
+        bool printing = false;
+        bool coloring = false;
+        // skip whitespace
+        bool   skip_ws   = false;
+        int    prev_char = 0;
+        fpos_t pos1;
+        fpos_t pos2;
+        while ((x = fgetc(test_file)) != EOF)
+        {
+            if (!printing)
+            {
+                if (line_no == a_list->hl.line_start)
+                {
+                    if (cursor_pos == a_list->hl.line_pos_start)
+                    {
+                        // Tell user where the todo word starts not the comment
+                        printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
+                               a_list->hl.hl_word_line_start,
+                               a_list->hl.hl_word_cursor_start + 1);
+                        printf("%*lu |  ", -3, line_no);
+                        printing = true;
+                    }
+                }
+            }
+            if (a_list->hl.hl_word_cursor_start == cursor_pos &&
+                a_list->hl.hl_word_line_start == line_no)
+            {
+                coloring = true;
+            }
+            if (printing)
+            {
 
+                if ((prev_char == ' ' || prev_char == '\t') &&
+                    (x == ' ' || prev_char == '\t'))
+                {
+                    skip_ws = true;
+                }
+                if (!skip_ws)
+                {
+                    if (coloring)
+                    {
+                        printf(a_list->hl.hl_color);
+                    }
+                    printf("%c", x);
+                    if (a_list->hl.hl_word_cursor_end == cursor_pos &&
+                        a_list->hl.hl_word_line_end == line_no)
+                    {
+                        printf(CRESET);
+                        coloring = false;
+                    }
+                }
+                if (skip_ws && !(x == ' ' || x == '\t'))
+                {
+                    skip_ws = false;
+                    printf("%c", x);
+                }
+                if (line_no == a_list->hl.line_end)
+                {
+                    if (cursor_pos == a_list->hl.line_pos_end)
+                    {
+                        printing = false;
+                        a_list   = a_list->next;
+                        printf("\n");
+                        printf("\n");
+                    }
+                }
+            }
+            if (a_list == nullptr) break;
+            cursor_pos++;
+            if (x == '\n')
+            {
+                line_no++;
+                cursor_pos = 0;
+            }
+            if (printing && x == '\n')
+            {
+                printf("%*lu |  ", -3, line_no);
+            }
+            prev_char = x;
+            fgetpos(test_file, &pos1);
+        }
+        dodo_ll_destroy(root);
+    }
+    fclose(test_file);
     dodo_trie_destroy(cool_trie);
     return 0;
 }
