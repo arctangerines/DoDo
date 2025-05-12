@@ -15,7 +15,8 @@
 /// @param h: If set to 'q' we panic because of the error,
 /// if set to 'c' we continue
 void
-mem_error_handling(void* p, const char h)
+mem_error_handling(void*      p,
+                   const char h)
 {
     if (p == NULL)
     {
@@ -60,6 +61,7 @@ dodo_make_trie()
     node->_children_alloced = false;
     node->children          = nullptr;
     node->count             = 0;
+    node->word              = false;
     node->bottom            = false;
     node->depth             = 0;
 
@@ -68,7 +70,8 @@ dodo_make_trie()
 
 /// Function to make a node with a char we specify
 struct dodoTrieNode*
-dodo_make_tnode(const char c, size_t depth)
+dodo_make_tnode(const char c,
+                size_t     depth)
 {
     struct dodoTrieNode* node = malloc(sizeof(struct dodoTrieNode));
     mem_error_handling(node, 'q');
@@ -77,6 +80,7 @@ dodo_make_tnode(const char c, size_t depth)
     node->_children_alloced = false;
     node->children          = nullptr;
     node->count             = 0;
+    node->word              = false;
     node->bottom            = false;
     node->depth             = depth;
 
@@ -87,7 +91,8 @@ dodo_make_tnode(const char c, size_t depth)
 //  a const char* called haystack and a const char* called needle
 /// Find the children node with the character we are looking for
 struct dodoTrieNode*
-dodo_trie_find_child(struct dodoTrieNode* node, const char c)
+dodo_trie_find_child(struct dodoTrieNode* node,
+                     const char           c)
 {
     // If its empty, theres no children
     if (node->count == 0)
@@ -106,7 +111,8 @@ dodo_trie_find_child(struct dodoTrieNode* node, const char c)
 /// This functions inserts 1 char into the nodes below the one we pass,
 /// and then returns said node we just inserted
 struct dodoTrieNode*
-dodo_trie_insert(struct dodoTrieNode* node, const char c)
+dodo_trie_insert(struct dodoTrieNode* node,
+                 const char           c)
 {
     // not a valid character to insert since it's our character for root of the
     // trie
@@ -159,7 +165,9 @@ dodo_trie_insert(struct dodoTrieNode* node, const char c)
 
 /// This function lets us add a keyword to the tree
 void
-dodo_trie_add_keyword(struct dodoTrieNode* node, const char* keyword)
+dodo_trie_add_keyword(struct dodoTrieNode* node,
+                      const char*          keyword,
+                      const char*          color)
 {
     // Arbitrary node, on this one we will store the node on top of the one we
     // will insert
@@ -169,7 +177,14 @@ dodo_trie_add_keyword(struct dodoTrieNode* node, const char* keyword)
         // Function returns the node that we have to continue inserting from
         a_node = dodo_trie_insert(a_node, keyword[j]);
     }
-    a_node->bottom = true;
+    if (a_node->count == 0)
+    {
+        a_node->bottom = true;
+    }
+    // FIXME: the logic here needs to be reworked, because what if we add a
+    // smaller word
+    a_node->word  = true;
+    a_node->color = color;
 }
 
 /// This function destroys the children nodes and the node itself we passed

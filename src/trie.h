@@ -24,29 +24,38 @@ struct dodoTrieNode
     struct dodoTrieNode** children;
     /// Amount of nodes.
     size_t count;
-    /// End of the word
+    bool   word;
+    /// End of the trie path
     bool bottom;
     /// How long is the word. (It's just len but in a different direction)
     size_t depth;
+    // color to use with the todo keyword
+    char* color;
 };
 
 void
-mem_error_handling(void* p, const char h);
+mem_error_handling(void*      p,
+                   const char h);
 
 struct dodoTrieNode*
 dodo_make_trie();
 
 struct dodoTrieNode*
-dodo_make_tnode(const char c, size_t depth);
+dodo_make_tnode(const char c,
+                size_t     depth);
 
 struct dodoTrieNode*
-dodo_trie_find_child(struct dodoTrieNode* node, const char c);
+dodo_trie_find_child(struct dodoTrieNode* node,
+                     const char           c);
 
 struct dodoTrieNode*
-dodo_trie_insert(struct dodoTrieNode* node, const char c);
+dodo_trie_insert(struct dodoTrieNode* node,
+                 const char           c);
 
 void
-dodo_trie_add_keyword(struct dodoTrieNode* node, const char* keyword);
+dodo_trie_add_keyword(struct dodoTrieNode* node,
+                      const char*          keyword,
+                      const char*          color);
 
 void
 dodo_trie_destroy_node(struct dodoTrieNode* node);

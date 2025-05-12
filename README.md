@@ -1,14 +1,18 @@
-WARNING: THIS IS A MESS RIGHT NOW, THAT'S HOW MY EARLY PROCESS LOOKS ALWAYS
-
 # DoDo
 
 ToDo manager
 
+## What works
+
+* List TODOs in a file
+* Formatted output
+
 # Short term goals
-* List TODOs in a project
+
+* List TODOs in a folder
+* Add the option to show a bit more of the code around the comments
 * Would be cool to add an option to print some lines before/after
 * Dump TODOs (same as list?)
-
 
 # Long term goals
 
