@@ -436,9 +436,9 @@ main(int    argc,
     setlocale(LC_ALL, "");
 
     // TODO: Config file and its integration
-    if (argc < 1)
+    if (argc < 2)
     {
-        printf("No file.");
+        printf("No file.\n");
         exit(-1);
     }
 

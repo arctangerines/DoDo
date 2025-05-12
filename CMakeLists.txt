@@ -27,6 +27,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -Wall -Wextra -Wpedantic -fdiagnostics-col
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -Wextra -Wpedantic -fdiagnostics-color=always")
 set(CMAKE_BUILD_TYPE Debug)
 
+
 include_directories(src)
 SET(SRCS
         src/dodo.c
@@ -36,4 +37,6 @@ SET(SRCS
 )
 
 add_executable(dodo ${SRCS})
+#install(TARGETS dodo DESTINATION bin)
+install(TARGETS dodo DESTINATION ~/.local/bin)
 target_link_libraries(dodo PRIVATE silky)
