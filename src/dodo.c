@@ -150,10 +150,10 @@ dodo_ll_add_element(struct dodoList* start,
     if (start->next == nullptr)
     {
 
-        struct dodoList* new = dodo_ll_new_element(
-            hl_line_start, hl_line_pos_start, hl_line_end, hl_line_pos_end,
-            hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
-            hl_word_cursor_end, color);
+        struct dodoList* new =
+            dodo_ll_new_element(hl_line_start, hl_line_pos_start, hl_line_end,
+                                hl_line_pos_end, hl_word_line_start, hl_word_line_end,
+                                hl_word_cursor_start, hl_word_cursor_end, color);
         start->next = new;
         return new;
     }
@@ -182,9 +182,8 @@ dodo_ll_add_from_root(struct dodoList* root,
     }
 
     struct dodoList* new = dodo_ll_new_element(
-        hl_line_start, hl_line_pos_start, hl_line_end, hl_line_pos_end,
-        hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
-        hl_word_cursor_end, color);
+        hl_line_start, hl_line_pos_start, hl_line_end, hl_line_pos_end, hl_word_line_start,
+        hl_word_line_end, hl_word_cursor_start, hl_word_cursor_end, color);
     a_ll->next = new;
     return new;
 }
@@ -224,8 +223,7 @@ dump_ll(struct dodoList* root)
         printf("Cursor pos start: %lu\n", a_element->hl.line_pos_start);
         printf("Line end: %lu\n", a_element->hl.line_end);
         printf("Cursor pos end: %lu\n", a_element->hl.line_pos_end);
-        printf("Highlight word start: %lu\n",
-               a_element->hl.hl_word_cursor_start);
+        printf("Highlight word start: %lu\n", a_element->hl.hl_word_cursor_start);
         printf("Highlight word end: %lu\n", a_element->hl.hl_word_cursor_end);
         printf("\n");
         a_element = a_element->next;
@@ -289,8 +287,8 @@ new_key_group(char*  ext,
     }
     else
     {
-        printf("Wrong amount of keys, given [%lu], expected [%u] or [%u]...\n",
-               key_size, 2, 4);
+        printf("Wrong amount of keys, given [%lu], expected [%u] or [%u]...\n", key_size,
+               2, 4);
     }
     return ck;
 }
@@ -526,16 +524,14 @@ main(int    argc,
     FILE* test_file = fopen(argv[1], "r");
     if (!test_file)
     {
-        printf("Error [%i]: [%s] when opening file...\n", errno,
-               strerror(errno));
+        printf("Error [%i]: [%s] when opening file...\n", errno, strerror(errno));
     }
     char*              ext = strrchr(argv[1], '.');
     struct commentKeys ck;
     char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
     char*              py_keys_temp[] = {"#", "\"\"\"", "\"\"\"", nullptr};
     // printf("ext: %s\n", ext);
-    if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 ||
-        strcmp(ext, ".cxx") == 0)
+    if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 || strcmp(ext, ".cxx") == 0)
     {
         ck = new_key_group(ext, c_keys_temp);
     }
@@ -595,24 +591,21 @@ main(int    argc,
             size_t key_len = strlen(ck.sl_key);
             // The idea here is to add offsets of +- 1 since we already consumed
             // a char
-            sl_comment =
-                (key_len > 1)
-                    ? n_look_ahead(key_len - 1, ck.sl_key + 1, test_file, &pos)
-                    : true;
+            sl_comment = (key_len > 1)
+                             ? n_look_ahead(key_len - 1, ck.sl_key + 1, test_file, &pos)
+                             : true;
             if (sl_comment)
             {
                 hl_line_start   = line_no;
                 hl_cursor_start = cursor_pos;
             }
         }
-        if (ck.multiline && x == ck.ml_start_keys[0] && !sl_comment &&
-            !ml_comment)
+        if (ck.multiline && x == ck.ml_start_keys[0] && !sl_comment && !ml_comment)
         {
             size_t key_len = strlen(ck.ml_start_keys);
-            ml_comment     = (key_len > 1)
-                                 ? n_look_ahead(key_len - 1, ck.ml_start_keys + 1,
-                                                test_file, &pos)
-                                 : true;
+            ml_comment = (key_len > 1) ? n_look_ahead(key_len - 1, ck.ml_start_keys + 1,
+                                                      test_file, &pos)
+                                       : true;
             if (ml_comment)
             {
                 // offset by how much we moved
@@ -682,10 +675,10 @@ main(int    argc,
             size_t key_len = strlen(ck.ml_end_keys);
             // inverse because if we dont find the char ahead, we want to keep
             // it on but if we do find it we want to turn off this
-            ml_comment = (key_len > 1)
-                             ? !(n_look_ahead(key_len - 1, ck.ml_end_keys + 1,
-                                              test_file, &pos))
-                             : false;
+            ml_comment =
+                (key_len > 1)
+                    ? !(n_look_ahead(key_len - 1, ck.ml_end_keys + 1, test_file, &pos))
+                    : false;
             if (!ml_comment)
             {
                 hl_line_end = line_no;
@@ -716,18 +709,18 @@ main(int    argc,
         {
             last          = (last == nullptr)
                                 ? (root = dodo_ll_new_element(
-                              hl_line_start, hl_cursor_start, hl_line_end,
-                              hl_cursor_end, hl_word_line_start,
-                              hl_word_line_end, hl_word_cursor_start,
+                              hl_line_start, hl_cursor_start, hl_line_end, hl_cursor_end,
+                              hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
                               hl_word_cursor_end, keyword_color))
                                 : dodo_ll_add_element(
                              last, hl_line_start, hl_cursor_start, hl_line_end,
-                             hl_cursor_end, hl_word_line_start,
-                             hl_word_line_end, hl_word_cursor_start,
-                             hl_word_cursor_end, keyword_color);
+                             hl_cursor_end, hl_word_line_start, hl_word_line_end,
+                             hl_word_cursor_start, hl_word_cursor_end, keyword_color);
             keyword_found = false;
         }
     }
+    // it gets added to 1 last time
+    absolute_lines -= 1;
     struct dodoList* a_list = root;
     if (a_list == nullptr)
     {
@@ -735,10 +728,11 @@ main(int    argc,
     }
     else
     {
-        // dump_ll(root);
+        dump_ll(root);
+        // exit(0);
         // reset file position
         rewind(test_file);
-        cursor_pos = 0;
+        cursor_pos = -1;
         line_no    = 1;
         // we are printing chars
         bool printing = false;
@@ -749,104 +743,163 @@ main(int    argc,
         fpos_t pos1;
         fpos_t pos2;
         size_t print_line_end = 0;
-        size_t next_line      = 0;
+        size_t reset_line     = 0;
+        size_t reset_pos      = 0;
         size_t next_cursor    = 0;
-        bool   next_set       = false;
-        if (n_count)
+        bool   reset_bool     = false;
+        // this works with both a value of 0 and an n value
+        while (1)
         {
-            while (1)
+            /*
+             * I didn't want the control of my function to depend on the while loop
+             * I wanted to handle EOF myself but at the end i didn't need it
+             */
+            x = fgetc(test_file);
+            cursor_pos++;
+            if (x == EOF)
             {
+                printf("eof");
                 break;
-                x = fgetc(test_file);
-                if (x == '\n')
+            }
+            /*
+             * The rationale for this is that I asked myself how would a method that
+             * parses the file line by line would update the line, would it get \n
+             * operate on it and then update the line number, or get \n and update line
+             * My answer was the latter, because we want atomicity(at least the idea of
+             * it) So in the spirit of atomicity, we gotta update the line as soon as
+             * we get it This goes in hand with how fgetc works, fgetc when you save
+             * the position in the char that\n, it will get you the character in the
+             * NEXT line so we restore at this \n simplified, if we are on line 78 at
+             * the last char \n and we want to print at line 79, we save on said line
+             * 79 @ last char \n, because when we call fgetc again and we print it, it
+             * will give us the first char of 79 this is the logic of [A]
+             */
+            if (x == '\n')
+            {
+                /*
+                 * So if we are on line 78 and we get \n, we behave like we are already
+                 * at line 79 [A]
+                 */
+                line_no++;
+                // unsigned integer overflow is defined behaviour :)
+                // it has to be -1 because we are setting it literally -1 of the start
+                // cursor_pos = -1;
+                cursor_pos = -1;
+            }
+            if (!printing)
+            {
+                // [A] our next char is the next line since we on \n,
+                // we save our position and consider it saved so we can rewind to it
+                // later reset_bool is so we dont save it every time we in this line,
+                if (line_no == clamp_lu((long)a_list->hl.line_start - (long)n_count, 1,
+                                        (long)a_list->hl.line_start))
                 {
-                    line_no++;
+                    // so fgetpos doesnt get called a billion times
+                    // it could perhaps be a '\n'(?)
+                    // if (!reset_bool)
+                    if (!reset_bool)
+                    {
+                        fgetpos(test_file, &pos2);
+                        reset_bool = true;
+                        // we save the line info
+                        reset_line = line_no;
+                        // this has no side effects because eventually the line gets
+                        // reset, so despite being useful, we NEED to have cursor_pos
+                        // reset to -1 when \n
+                        reset_pos = 0;
+                    }
+                    printing = true;
+                    printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
+                           a_list->hl.hl_word_line_start,
+                           a_list->hl.hl_word_cursor_start + 1);
                 }
-                if (x == EOF)
+            }
+            /*
+             * [B] This is the other key point that makes this work
+             * Say we finish printing at 80, but we dont want to stop printing
+             * right when we get to 80 (which would be at \n) of 79
+             * So following the same logic, if are at line 81 but it's '\n', that
+             * means that we are right at the beginning of it (which is 80 at \n)
+             * (maybe we can rewrite our parser to have similar behaviour
+             */
+            if (line_no - 1 == clamp_lu((long)a_list->hl.line_end + (long)n_count,
+                                        (long)a_list->hl.line_end, (long)absolute_lines) &&
+                x == '\n')
+            {
+                printing = false;
+                // we save our next element
+                a_list = a_list->next;
+                if (a_list == nullptr)
                 {
+                    // This works actually because all POSIX files end with
+                    // a newline Soooooo, we basically can print with no
+                    // worries, in theory we cant have more elements than
+                    // there are
+                    // TODOs, so if a ToDo that is an element of our list
+                    // and starts any line aftyer the last line, cannot
+                    // exist hence why POSIX files ending in a newline works
+                    // we will each newline before we reach actual EOF
+                    // and by the time we reach the last \n, this will be
+                    // set to null and the function will break
+                    // this printf is to simulate we actually printed the
+                    // last newline
+                    printf("\n");
                     break;
                 }
-                // STEP: we scan until we find the first line we want to print
-                // STEP: we print until the end
-                // STEP: then we change pointers of a_ll
+                fsetpos(test_file, &pos2);
+                reset_bool = false;
+                line_no    = reset_line;
+                cursor_pos = reset_pos;
+                // To add some breathing room for the messages
+                printf("\n\n");
             }
-            printf("Feature is being implemented...!");
-        }
-        else
-        {
-            while ((x = fgetc(test_file)) != EOF)
+            if (printing)
             {
-                if (!printing)
-                {
-                    if (line_no == a_list->hl.line_start &&
-                        cursor_pos == a_list->hl.line_pos_start)
-                    {
-                        // Tell user where the todo word starts not the
-                        // comment
-                        printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
-                               a_list->hl.hl_word_line_start,
-                               a_list->hl.hl_word_cursor_start + 1);
-                        printf("%*lu |  ", -3, line_no);
-                        printing = true;
-                    }
-                }
-                if (a_list->hl.hl_word_cursor_start == cursor_pos &&
-                    a_list->hl.hl_word_line_start == line_no)
+                if (line_no == a_list->hl.hl_word_line_start &&
+                    cursor_pos == a_list->hl.hl_word_cursor_start)
                 {
                     coloring = true;
                 }
-                if (printing)
+                if (coloring)
                 {
+                    printf(a_list->hl.hl_color);
+                }
+                // printf("%c", x);
+                // FIXME: Might delete this feature or make it a flag------------------
+                if ((prev_char == ' ' || prev_char == '\t') &&
+                    (x == ' ' || prev_char == '\t'))
+                {
+                    skip_ws = true;
+                }
+                if (!skip_ws)
+                {
+                    printf("%c", x);
+                }
+                if (skip_ws && !(x == ' ' || x == '\t'))
+                {
+                    skip_ws = false;
+                    printf("%c", x);
+                }
+                //--------------------------------------------------------------------------------------
 
-                    if ((prev_char == ' ' || prev_char == '\t') &&
-                        (x == ' ' || prev_char == '\t'))
-                    {
-                        skip_ws = true;
-                    }
-                    if (!skip_ws)
-                    {
-                        if (coloring)
-                        {
-                            printf(a_list->hl.hl_color);
-                        }
-                        printf("%c", x);
-                        if (a_list->hl.hl_word_cursor_end == cursor_pos &&
-                            a_list->hl.hl_word_line_end == line_no)
-                        {
-                            printf(CRESET);
-                            coloring = false;
-                        }
-                    }
-                    if (skip_ws && !(x == ' ' || x == '\t'))
-                    {
-                        skip_ws = false;
-                        printf("%c", x);
-                    }
-                    if (line_no == a_list->hl.line_end)
-                    {
-                        if (cursor_pos == a_list->hl.line_pos_end)
-                        {
-                            printing = false;
-                            a_list   = a_list->next;
-                            printf("\n");
-                            printf("\n");
-                        }
-                    }
-                }
-                if (a_list == nullptr) break;
-                cursor_pos++;
-                if (x == '\n')
+                if (line_no == a_list->hl.hl_word_line_end &&
+                    cursor_pos == a_list->hl.hl_word_cursor_end)
                 {
-                    line_no++;
-                    cursor_pos = 0;
+                    printf(CRESET);
+                    coloring = false;
                 }
-                if (printing && x == '\n')
+                if (x == '\n' && line_no <= absolute_lines)
                 {
-                    printf("%*lu |  ", -3, line_no);
+                    printf("%*lu|  ", -3, line_no);
+                    // add by option
+                    // printf("%*lu/%*lu|  ", -3, line_no, 3,
+                    // absolute_lines);
                 }
-                prev_char = x;
-                fgetpos(test_file, &pos1);
             }
+            prev_char = x;
+            // cursor pos starts at 0, so we do need to update at the bottom
+            // this is inconsistena ctually
+            // FIXME: this sucks
         }
         // dump_ll(root);
         dodo_ll_destroy(root);

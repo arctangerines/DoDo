@@ -59,6 +59,7 @@ BreakBeforeBraces: Allman
 #BreakAfterJavaFieldAnnotations: false
 #BreakStringLiterals: true
 #ColumnLimit:     80
+ColumnLimit:     91
 #CommentPragmas:  '^ IWYU pragma:'
 #CompactNamespaces: false
 #ConstructorInitializerAllOnOneLineOrOnePerLine: true
