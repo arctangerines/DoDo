@@ -19,6 +19,23 @@
  * partial
  */
 
+// clamp size_t
+size_t
+clamp_lu(long x,
+         long min,
+         long max)
+{
+    if (x < min)
+    {
+        return (size_t)min;
+    }
+    if (x > max)
+    {
+        return max;
+    }
+    return (size_t)x;
+}
+
 size_t
 utf8_length(const uint8_t c)
 {
@@ -85,16 +102,17 @@ struct dodoList
 
 /// Make an arbitrary element and return it, good for starting a linked list
 /// @param hl_line_start: Line to start the highlight from
+/// FIXME: Names names names
 struct dodoList*
-dodo_ll_new_element(size_t      hl_line_start,
-                    size_t      hl_line_pos_start,
-                    size_t      hl_line_end,
-                    size_t      hl_line_pos_end,
-                    size_t      hl_word_line_start,
-                    size_t      hl_word_line_end,
-                    size_t      hl_word_cursor_start,
-                    size_t      hl_word_cursor_end,
-                    const char* color)
+dodo_ll_new_element(size_t hl_line_start,
+                    size_t hl_line_pos_start,
+                    size_t hl_line_end,
+                    size_t hl_line_pos_end,
+                    size_t hl_word_line_start,
+                    size_t hl_word_line_end,
+                    size_t hl_word_cursor_start,
+                    size_t hl_word_cursor_end,
+                    char*  color)
 {
     struct dodoList* a_ll         = malloc(sizeof(struct dodoList));
     a_ll->hl.line_start           = hl_line_start;
@@ -120,7 +138,7 @@ dodo_ll_add_element(struct dodoList* start,
                     size_t           hl_word_line_end,
                     size_t           hl_word_cursor_start,
                     size_t           hl_word_cursor_end,
-                    const char*      color)
+                    char*            color)
 {
     if (start == nullptr) return nullptr;
     if (start->next != nullptr)
@@ -129,15 +147,17 @@ dodo_ll_add_element(struct dodoList* start,
         return nullptr;
     }
 
-    struct dodoList* new = dodo_ll_new_element(
-        hl_line_start, hl_line_pos_start, hl_line_end, hl_line_pos_end,
-        hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
-        hl_word_cursor_end, color);
     if (start->next == nullptr)
     {
+
+        struct dodoList* new = dodo_ll_new_element(
+            hl_line_start, hl_line_pos_start, hl_line_end, hl_line_pos_end,
+            hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
+            hl_word_cursor_end, color);
         start->next = new;
         return new;
     }
+    return nullptr;
 }
 
 // FIXME: Maybe this should be the default way to add elements,
@@ -152,7 +172,7 @@ dodo_ll_add_from_root(struct dodoList* root,
                       size_t           hl_word_line_end,
                       size_t           hl_word_cursor_start,
                       size_t           hl_word_cursor_end,
-                      const char*      color)
+                      char*            color)
 {
     struct dodoList* a_ll = root;
     if (a_ll == nullptr) return nullptr;
@@ -223,10 +243,6 @@ struct commentKeys
     // perhaps add an option of multikeys for multiline
 };
 
-void
-ck_add_key(struct commentKeys* ck)
-{
-}
 struct commentKeys
 new_key_group(char*  ext,
               char** keys)
@@ -273,9 +289,8 @@ new_key_group(char*  ext,
     }
     else
     {
-        printf(
-            "Wrong amount of keys, given [%lu], expected [%lu] or [%lu]...\n",
-            key_size, 2, 4);
+        printf("Wrong amount of keys, given [%lu], expected [%u] or [%u]...\n",
+               key_size, 2, 4);
     }
     return ck;
 }
@@ -283,10 +298,8 @@ new_key_group(char*  ext,
 /// @param c: char we are looking for
 /// @param f: file we are working with
 /// @param pos: pos_t var we are using to preserve our position
-/// FIXME: Make a lookahead that looks n amount of chars ahead, for comment keys
-/** TODO: l**/
 bool
-simple_look_ahead(char    c,
+simple_look_ahead(int     c,
                   FILE*   f,
                   fpos_t* pos)
 {
@@ -467,6 +480,10 @@ create_config_files()
  * (which you can argue includes memory management but I promise I won't
  * forget)
  */
+/*
+ * TODO: Implement recursively search for files in a folder
+ * TODO: Implement argument for doc functions?
+ */
 int
 main(int    argc,
      char** argv)
@@ -488,6 +505,11 @@ main(int    argc,
         printf("No file.\n");
         exit(-1);
     }
+    size_t n_count = 0;
+    if (argc == 3)
+    {
+        n_count = strtol(argv[2], nullptr, 10);
+    }
 
     struct dodoTrieNode* cool_trie = dodo_make_trie();
     dodo_trie_add_keyword(cool_trie, "TODO", GOLD);
@@ -504,13 +526,13 @@ main(int    argc,
     FILE* test_file = fopen(argv[1], "r");
     if (!test_file)
     {
-        printf("Error [%i]: [%hs] when opening file...\n", errno,
+        printf("Error [%i]: [%s] when opening file...\n", errno,
                strerror(errno));
     }
     char*              ext = strrchr(argv[1], '.');
     struct commentKeys ck;
     char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
-    char*              py_keys_temp[] = {"##", "\"\"\"", "\"\"\"", nullptr};
+    char*              py_keys_temp[] = {"#", "\"\"\"", "\"\"\"", nullptr};
     // printf("ext: %s\n", ext);
     if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 ||
         strcmp(ext, ".cxx") == 0)
@@ -544,7 +566,9 @@ main(int    argc,
     fpos_t pos;
 
     // Line number we are at
-    size_t line_no = 1;
+    size_t line_no         = 1;
+    size_t absolute_lines  = 1;
+    size_t absolute_cursor = 0;
     // Position of cursor
     size_t           cursor_pos = 0;
     struct dodoList* root       = nullptr;
@@ -679,11 +703,13 @@ main(int    argc,
                 hl_cursor_end = cursor_pos - 1;
             }
             line_no++;
+            absolute_lines++;
             cursor_pos = 0;
         }
         else
         {
             cursor_pos++;
+            absolute_cursor = cursor_pos;
         }
 
         if (keyword_found && !(sl_comment || ml_comment))
@@ -722,15 +748,41 @@ main(int    argc,
         int    prev_char = 0;
         fpos_t pos1;
         fpos_t pos2;
-        while ((x = fgetc(test_file)) != EOF)
+        size_t print_line_end = 0;
+        size_t next_line      = 0;
+        size_t next_cursor    = 0;
+        bool   next_set       = false;
+        if (n_count)
         {
-            if (!printing)
+            while (1)
             {
-                if (line_no == a_list->hl.line_start)
+                break;
+                x = fgetc(test_file);
+                if (x == '\n')
                 {
-                    if (cursor_pos == a_list->hl.line_pos_start)
+                    line_no++;
+                }
+                if (x == EOF)
+                {
+                    break;
+                }
+                // STEP: we scan until we find the first line we want to print
+                // STEP: we print until the end
+                // STEP: then we change pointers of a_ll
+            }
+            printf("Feature is being implemented...!");
+        }
+        else
+        {
+            while ((x = fgetc(test_file)) != EOF)
+            {
+                if (!printing)
+                {
+                    if (line_no == a_list->hl.line_start &&
+                        cursor_pos == a_list->hl.line_pos_start)
                     {
-                        // Tell user where the todo word starts not the comment
+                        // Tell user where the todo word starts not the
+                        // comment
                         printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
                                a_list->hl.hl_word_line_start,
                                a_list->hl.hl_word_cursor_start + 1);
@@ -738,64 +790,65 @@ main(int    argc,
                         printing = true;
                     }
                 }
-            }
-            if (a_list->hl.hl_word_cursor_start == cursor_pos &&
-                a_list->hl.hl_word_line_start == line_no)
-            {
-                coloring = true;
-            }
-            if (printing)
-            {
+                if (a_list->hl.hl_word_cursor_start == cursor_pos &&
+                    a_list->hl.hl_word_line_start == line_no)
+                {
+                    coloring = true;
+                }
+                if (printing)
+                {
 
-                if ((prev_char == ' ' || prev_char == '\t') &&
-                    (x == ' ' || prev_char == '\t'))
-                {
-                    skip_ws = true;
-                }
-                if (!skip_ws)
-                {
-                    if (coloring)
+                    if ((prev_char == ' ' || prev_char == '\t') &&
+                        (x == ' ' || prev_char == '\t'))
                     {
-                        printf(a_list->hl.hl_color);
+                        skip_ws = true;
                     }
-                    printf("%c", x);
-                    if (a_list->hl.hl_word_cursor_end == cursor_pos &&
-                        a_list->hl.hl_word_line_end == line_no)
+                    if (!skip_ws)
                     {
-                        printf(CRESET);
-                        coloring = false;
+                        if (coloring)
+                        {
+                            printf(a_list->hl.hl_color);
+                        }
+                        printf("%c", x);
+                        if (a_list->hl.hl_word_cursor_end == cursor_pos &&
+                            a_list->hl.hl_word_line_end == line_no)
+                        {
+                            printf(CRESET);
+                            coloring = false;
+                        }
                     }
-                }
-                if (skip_ws && !(x == ' ' || x == '\t'))
-                {
-                    skip_ws = false;
-                    printf("%c", x);
-                }
-                if (line_no == a_list->hl.line_end)
-                {
-                    if (cursor_pos == a_list->hl.line_pos_end)
+                    if (skip_ws && !(x == ' ' || x == '\t'))
                     {
-                        printing = false;
-                        a_list   = a_list->next;
-                        printf("\n");
-                        printf("\n");
+                        skip_ws = false;
+                        printf("%c", x);
+                    }
+                    if (line_no == a_list->hl.line_end)
+                    {
+                        if (cursor_pos == a_list->hl.line_pos_end)
+                        {
+                            printing = false;
+                            a_list   = a_list->next;
+                            printf("\n");
+                            printf("\n");
+                        }
                     }
                 }
+                if (a_list == nullptr) break;
+                cursor_pos++;
+                if (x == '\n')
+                {
+                    line_no++;
+                    cursor_pos = 0;
+                }
+                if (printing && x == '\n')
+                {
+                    printf("%*lu |  ", -3, line_no);
+                }
+                prev_char = x;
+                fgetpos(test_file, &pos1);
             }
-            if (a_list == nullptr) break;
-            cursor_pos++;
-            if (x == '\n')
-            {
-                line_no++;
-                cursor_pos = 0;
-            }
-            if (printing && x == '\n')
-            {
-                printf("%*lu |  ", -3, line_no);
-            }
-            prev_char = x;
-            fgetpos(test_file, &pos1);
         }
+        // dump_ll(root);
         dodo_ll_destroy(root);
     }
     fclose(test_file);
