@@ -62,129 +62,6 @@ utf8_length(const uint8_t c)
     return shift_size;
 }
 
-// TODO: Look at error codes in the C/GNU way thinking emoji
-// FIXME: Document this function;
-int
-create_config_files()
-{
-    // TODO: Get environment variable for XDG_CONFIG_HOME
-    char* conf_dir_env_path = getenv("XDG_CONFIG_HOME");
-    if (conf_dir_env_path)
-    {
-        char* conf_dodo = "/dodo";
-        char* conf_file = "/dodofile";
-
-        struct stat conf_dir_env_stat;
-        if (stat(conf_dir_env_path, &conf_dir_env_stat) == -1)
-        {
-            if (errno == ENOENT)
-            {
-                mkdir(conf_dir_env_path, 0700);
-                wprintf(L"Creating XDG config directory...\n");
-            }
-        }
-        size_t env_path_len = strlen(conf_dir_env_path);
-
-        // +1 for our '\0'
-        size_t n = strlen(conf_dodo) + env_path_len + strlen(conf_file) + 1;
-        char*  conf_dodo_path;
-        conf_dodo_path = malloc(sizeof(char) * n);
-        // This is important because '\0' is gonna replace what we got at
-        // the end of the destination string, and in this case that is the
-        // destination string, so it needs to be initialized
-        conf_dodo_path[0] = '\0';
-        strncat(conf_dodo_path, conf_dir_env_path, env_path_len);
-        strncat(conf_dodo_path, conf_dodo, strlen(conf_dodo));
-
-        if (stat(conf_dodo_path, &conf_dir_env_stat) == -1)
-        {
-            if (errno == ENOENT)
-            {
-                mkdir(conf_dodo_path, 0700);
-                wprintf(L"Creating dodo folder in XDG config directory...\n");
-            }
-        }
-        strncat(conf_dodo_path, conf_file, strlen(conf_file));
-        if (stat(conf_dodo_path, &conf_dir_env_stat) == -1)
-        {
-            if (errno == ENOENT)
-            {
-                fclose(fopen(conf_dodo_path, "a+"));
-                wprintf(L"Creating dodofile\n");
-            }
-        }
-
-        free(conf_dodo_path);
-        return 0;
-    }
-    // SECTION: Without XDG_CONFIG_HOME
-    // FIXME: Please stop using so many variables, fix this NEOW
-    wordexp_t p;
-    char*     conf_dir_tilde = "~/.config";
-    if (wordexp(conf_dir_tilde, &p, 0) == -1)
-    {
-        wprintf(L"We couldn't expand\n");
-        return -1;
-    }
-    char* conf_dir;
-    conf_dir = p.we_wordv[0];
-
-    struct stat conf_dir_stat;
-    if (stat(conf_dir, &conf_dir_stat) == -1)
-    {
-        wprintf(L"Couldn't stat user config directory.\n");
-        if (errno == ENOENT)
-        {
-            mkdir(conf_dir, 0700);
-            wprintf(L"Creating home config directory...\n");
-        }
-        else
-            return -1;
-    }
-
-    wordexp_t q;
-    char*     conf_dir_full_tilde = "~/.config/dodo";
-    if (wordexp(conf_dir_full_tilde, &q, 0) == -1)
-    {
-        wprintf(L"We couldn't expand\n");
-        return -1;
-    }
-    char* conf_dir_full;
-    conf_dir_full = q.we_wordv[0];
-    struct stat conf_dir_full_stat;
-    if (stat(conf_dir_full, &conf_dir_full_stat) == -1)
-    {
-        if (errno == ENOENT)
-        {
-            mkdir(conf_dir_full, 0700);
-            wprintf(L"Creating...\n");
-        }
-        else
-            return -1;
-    }
-
-    wordexp_t w;
-    char*     conf_file_path = "~/.config/dodo/dodofile";
-    if (wordexp(conf_file_path, &w, 0) == -1)
-    {
-        wprintf(L"We couldn't expand\n");
-        return -1;
-    }
-    char*       conf_file = w.we_wordv[0];
-    struct stat conf_file_stat;
-    if (stat(conf_file, &conf_file_stat) == -1)
-    {
-        if (errno == ENOENT)
-        {
-            // This is really really really bad but it makes me laugh
-            fclose(fopen(conf_file, "a+"));
-        }
-        else
-            return -1;
-    }
-    return 0;
-}
-
 /*WARNING: I'm going to be leaking memory all over the place because
  * initial focus will be on design correctness
  * (which you can argue includes memory management but I promise I won't
@@ -198,25 +75,35 @@ int
 main(int    argc,
      char** argv)
 {
-    // FILE* config_file = fopen("./testfig/dodofile", "a+");
-
-    // if (create_config_files() == -1)
-    // {
-    //     wprintf(L"Error %i: %hs", errno, strerror(errno));
-    //     exit(errno);
-    // }
-
+    // TODO: Config file and its integration
+    // FIXME: Argument handling
     /// Portable locale lolz
     setlocale(LC_ALL, "");
 
-    // TODO: Config file and its integration
     if (argc < 2)
     {
         printf("No file.\n");
         exit(-1);
     }
     size_t extra_lines_arg = 4;
-    if (argc >= 3)
+    bool   less            = false;
+    // if we got 4 arguments check which one has the --less flag
+    if (argc == 4)
+    {
+        if (strcmp(argv[2], "--less") == 0 || strcmp(argv[2], "-l") == 0)
+        {
+            less = true;
+            // the next argument is the line number
+            extra_lines_arg = strtol(argv[3], nullptr, 10);
+        }
+        else if (strcmp(argv[3], "--less") == 0 || strcmp(argv[3], "-l") == 0)
+        {
+            less = true;
+            // the previous argument is the line number
+            extra_lines_arg = strtol(argv[2], nullptr, 10);
+        }
+    }
+    if (argc == 3)
     {
         extra_lines_arg = strtol(argv[2], nullptr, 10);
     }
@@ -260,11 +147,6 @@ main(int    argc,
     struct dodoFileHighlights* file_hl = dodo_gen_todo_data(test_file, ck, cool_trie);
 
     // If we pipe to less
-    bool less = false;
-    if (argc >= 4)
-    {
-        less = true;
-    }
 
     if (less)
     {
