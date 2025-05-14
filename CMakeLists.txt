@@ -31,9 +31,11 @@ set(CMAKE_BUILD_TYPE Debug)
 include_directories(src)
 SET(SRCS
         src/dodo.c
-        src/term_colors.h
-        src/trie.h
         src/trie.c
+        src/parsing_io.c
+        src/list.c
+        src/ck.c
+        src/utility.c
 )
 
 add_executable(dodo ${SRCS})

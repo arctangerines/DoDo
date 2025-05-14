@@ -1,7 +1,3 @@
-//
-// Created by infrared on 21/04/25.
-//
-
 #ifndef TRIE_H
 #define TRIE_H
 #include <stdio.h>
@@ -55,7 +51,7 @@ dodo_trie_insert(struct dodoTrieNode* node,
 void
 dodo_trie_add_keyword(struct dodoTrieNode* node,
                       const char*          keyword,
-                      const char*          color);
+                      char*                color);
 
 void
 dodo_trie_destroy_node(struct dodoTrieNode* node);

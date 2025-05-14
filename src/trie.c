@@ -21,7 +21,7 @@ mem_error_handling(void*      p,
     if (p == NULL)
     {
 
-        printf("Error %i: %hs\n", errno, strerror(errno));
+        printf("Error %i: %s\n", errno, strerror(errno));
         // I think that 2 if statements looks better but switch literally
         // made for these situations
         switch (h)
@@ -139,14 +139,14 @@ dodo_trie_insert(struct dodoTrieNode* node,
         // Expand the size of the array
         a_node->count += 1;
         // Realloc to expand, but this is up
-        struct dodoTrieNode** a_child = realloc(
-            a_node->children, sizeof(struct dodoTrieNode**) * (a_node->count));
+        struct dodoTrieNode** a_child =
+            realloc(a_node->children, sizeof(struct dodoTrieNode**) * (a_node->count));
         // Error handling
         // Should we add a perror handling function?
         mem_error_handling(a_child, 'q');
         a_node->children = a_child;
         // We add +1 because we adding an element downwards
-        struct dodoTrieNode* c_node = dodo_make_tnode(c, a_node->depth + 1);
+        struct dodoTrieNode* c_node         = dodo_make_tnode(c, a_node->depth + 1);
         a_node->children[a_node->count - 1] = c_node;
         return c_node;
     }
@@ -167,7 +167,7 @@ dodo_trie_insert(struct dodoTrieNode* node,
 void
 dodo_trie_add_keyword(struct dodoTrieNode* node,
                       const char*          keyword,
-                      const char*          color)
+                      char*                color)
 {
     // Arbitrary node, on this one we will store the node on top of the one we
     // will insert
