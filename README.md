@@ -2,10 +2,19 @@
 
 ToDo manager
 
-## What works
+## Usage
+
+`dodo` `file` `[Line padding]` `[--less|-l]`
+* Line padding is the amount of lines to show before and after the ToDo
+* Less flag is to pipe the output to less
+* Line padding and --less flag can go in any order after `file`
+
+## Features
 
 * List TODOs in a file
 * Formatted output
+* Specifying the amount of lines to show before/after the todo line
+* Pipe to less
 
 # Short term goals
 
@@ -17,5 +26,3 @@ ToDo manager
 # Long term goals
 
 * Implement config file parser
-* Interactive mode, show TODOs in a project in an interactive reader (kinda
-  like diff)

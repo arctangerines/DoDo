@@ -76,7 +76,9 @@ main(int    argc,
      char** argv)
 {
     // TODO: Config file and its integration
+    // FIXME: Handling all files in a directory
     // FIXME: Argument handling
+
     /// Portable locale lolz
     setlocale(LC_ALL, "");
 
