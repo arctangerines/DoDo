@@ -783,7 +783,6 @@ main(int    argc,
                 line_no++;
                 // unsigned integer overflow is defined behaviour :)
                 // it has to be -1 because we are setting it literally -1 of the start
-                // cursor_pos = -1;
                 cursor_pos = -1;
             }
             if (!printing)
@@ -791,6 +790,7 @@ main(int    argc,
                 // [A] our next char is the next line since we on \n,
                 // we save our position and consider it saved so we can rewind to it
                 // later reset_bool is so we dont save it every time we in this line,
+                // the reset position is always the start of the "previous" highlight
                 if (line_no == clamp_lu((long)a_list->hl.line_start - (long)n_count, 1,
                                         (long)a_list->hl.line_start))
                 {
@@ -803,10 +803,6 @@ main(int    argc,
                         reset_bool = true;
                         // we save the line info
                         reset_line = line_no;
-                        // this has no side effects because eventually the line gets
-                        // reset, so despite being useful, we NEED to have cursor_pos
-                        // reset to -1 when \n
-                        reset_pos = 0;
                     }
                     printing = true;
                     printf(FILEPATH "%s:%lu:%lu\n" CRESET, argv[1],
@@ -849,7 +845,7 @@ main(int    argc,
                 fsetpos(test_file, &pos2);
                 reset_bool = false;
                 line_no    = reset_line;
-                cursor_pos = reset_pos;
+                cursor_pos = -1;
                 // To add some breathing room for the messages
                 printf("\n\n");
             }
@@ -865,7 +861,7 @@ main(int    argc,
                     printf(a_list->hl.hl_color);
                 }
                 // printf("%c", x);
-                // FIXME: Might delete this feature or make it a flag------------------
+                // FIXME: Might delete this feature or make it a flag----------------------
                 if ((prev_char == ' ' || prev_char == '\t') &&
                     (x == ' ' || prev_char == '\t'))
                 {
@@ -880,7 +876,7 @@ main(int    argc,
                     skip_ws = false;
                     printf("%c", x);
                 }
-                //--------------------------------------------------------------------------------------
+                //-------------------------------------------------------------------------
 
                 if (line_no == a_list->hl.hl_word_line_end &&
                     cursor_pos == a_list->hl.hl_word_cursor_end)
@@ -897,9 +893,6 @@ main(int    argc,
                 }
             }
             prev_char = x;
-            // cursor pos starts at 0, so we do need to update at the bottom
-            // this is inconsistena ctually
-            // FIXME: this sucks
         }
         // dump_ll(root);
         dodo_ll_destroy(root);
