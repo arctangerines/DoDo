@@ -107,7 +107,15 @@ main(int    argc,
     }
     if (argc == 3)
     {
-        extra_lines_arg = strtol(argv[2], nullptr, 10);
+        if (strcmp(argv[2], "--less") == 0 || strcmp(argv[2], "-l") == 0)
+        {
+            less = true;
+        }
+        else
+        {
+            // the next argument is the line number
+            extra_lines_arg = strtol(argv[3], nullptr, 10);
+        }
     }
 
     struct dodoTrieNode* cool_trie = dodo_make_trie();
