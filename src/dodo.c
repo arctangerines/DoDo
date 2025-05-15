@@ -62,15 +62,77 @@ utf8_length(const uint8_t c)
     return shift_size;
 }
 
-/*WARNING: I'm going to be leaking memory all over the place because
- * initial focus will be on design correctness
- * (which you can argue includes memory management but I promise I won't
- * forget)
- */
-/*
- * TODO: Implement recursively search for files in a folder
- * TODO: Implement argument for doc functions?
- */
+bool
+flag_bool(int    argc,
+          char** argv,
+          char   c)
+{
+    if (argc == 1)
+    {
+        printf("No arguments provided");
+        return false;
+    }
+    // start at 1 to skip first parameter
+    for (int i = 1; i < argc; i++)
+    {
+        // we skip whatever is not a flag
+        if (argv[i][0] != '-') continue;
+        size_t arg_len = strlen(argv[i]);
+        for (int j = 0; j < arg_len; j++)
+        {
+            if (argv[i][j] == c) return true;
+        }
+    }
+    return false;
+}
+
+size_t
+flag_uint(int    argc,
+          char** argv,
+          char   fl,
+          char*  error_str)
+{
+    char* digits = nullptr;
+    bool  found  = false;
+    if (argc == 1)
+    {
+        printf("No arguments provided");
+        return 0;
+    }
+    for (int i = 1; i < argc; i++)
+    {
+        if (argv[i][0] != '-') continue;
+        size_t arg_len = strlen(argv[i]);
+        // we already checked the 0 position before
+        for (int j = 1; j < arg_len; j++)
+        {
+            // probably dont need the for loop above, if its not at the end
+            // or alone, it doesnt work
+            if (argv[i][1] == fl)
+            {
+                // start where we at at count what comes after
+                if (strlen(argv[i] + j) < 2)
+                {
+                    // gave us nothing after the letter, so it does nothing
+                    return 0;
+                }
+                found = true;
+                // give us the value at next starting point
+                digits = argv[i] + j + 1;
+                printf("Digits: [%s]\n", digits);
+                // i love strtol since it discards everything we need discarded here
+                return strtol(digits, nullptr, 10);
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+char**
+collect_files();
+
+// TODO: Accept piping
 int
 main(int    argc,
      char** argv)
