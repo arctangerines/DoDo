@@ -69,7 +69,6 @@ flag_bool(int    argc,
 {
     if (argc == 1)
     {
-        printf("No arguments provided");
         return false;
     }
     // start at 1 to skip first parameter
@@ -78,7 +77,7 @@ flag_bool(int    argc,
         // we skip whatever is not a flag
         if (argv[i][0] != '-') continue;
         size_t arg_len = strlen(argv[i]);
-        for (int j = 0; j < arg_len; j++)
+        for (int j = 0; (size_t)j < arg_len; j++)
         {
             if (argv[i][j] == c) return true;
         }
@@ -90,21 +89,20 @@ size_t
 flag_uint(int    argc,
           char** argv,
           char   fl,
+          size_t def_val,
           char*  error_str)
 {
     char* digits = nullptr;
-    bool  found  = false;
     if (argc == 1)
     {
-        printf("No arguments provided");
-        return 0;
+        return def_val;
     }
     for (int i = 1; i < argc; i++)
     {
         if (argv[i][0] != '-') continue;
         size_t arg_len = strlen(argv[i]);
         // we already checked the 0 position before
-        for (int j = 1; j < arg_len; j++)
+        for (int j = 1; (size_t)j < arg_len; j++)
         {
             // probably dont need the for loop above, if its not at the end
             // or alone, it doesnt work
@@ -116,27 +114,139 @@ flag_uint(int    argc,
                     // gave us nothing after the letter, so it does nothing
                     return 0;
                 }
-                found = true;
                 // give us the value at next starting point
                 digits = argv[i] + j + 1;
                 printf("Digits: [%s]\n", digits);
                 // i love strtol since it discards everything we need discarded here
                 return strtol(digits, nullptr, 10);
-                break;
             }
         }
     }
-    return 0;
+    return def_val;
 }
 
-char**
-collect_files();
+struct fileGroup
+{
+    size_t count;
+    char** files;
+};
+
+struct fileGroup*
+collect_files(int    argc,
+              char** argv)
+{
+    // starting point of index files up till the end
+    size_t idx_f = 0;
+    // skip first file
+    for (int i = 1; i < argc; i++)
+    {
+        if (argv[i][0] != '-')
+        {
+            idx_f = (size_t)i;
+            printf("argc: %d, idx_F:%ld", argc, idx_f);
+            break;
+        }
+    }
+    if (idx_f == 0)
+    {
+        printf("No files provided.");
+        return nullptr;
+    }
+    size_t            count     = (size_t)argc - idx_f;
+    struct fileGroup* file_list = malloc(sizeof(struct fileGroup));
+    file_list->count            = count;
+    file_list->files            = malloc(sizeof(char*) * count);
+    for (size_t j = 0; j < count; j++)
+    {
+        file_list->files[j] = argv[j + idx_f];
+    }
+    // print file list
+    printf("\n-----------------------\n");
+    printf("Number of files: %lu", file_list->count);
+    for (size_t k = 0; k < file_list->count; k++)
+    {
+        printf("%s\n", file_list->files[k]);
+    }
+    return file_list;
+}
+
+void
+destroy_filegroup(struct fileGroup* fg)
+{
+    if (fg == nullptr)
+    {
+        return;
+    }
+    if (fg->files != nullptr)
+    {
+        free(fg->files);
+    }
+    free(fg);
+}
+
+/// @param line_pad: the amount of lines to add above and below the hl comment
+void
+gen_todo_from_filegroup(struct fileGroup*    fg,
+                        struct dodoTrieNode* trie_root,
+                        size_t               line_pad)
+{
+    struct commentKeys ck;
+    char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
+    char*              py_keys_temp[] = {"#", "\"\"\"", "\"\"\"", nullptr};
+    for (size_t i = 0; i < fg->count; i++)
+    {
+        // arbitrary file
+        FILE* a_file = fopen(fg->files[i], "r");
+        if (!a_file)
+        {
+            printf("Error [%i]: [%s] when opening file...\n", errno, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        char* ext = strrchr(fg->files[i], '.');
+        // printf("ext: %s\n", ext);
+        if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 || strcmp(ext, ".cxx") == 0)
+        {
+            ck = new_key_group(ext, c_keys_temp);
+        }
+        else if (strcmp(ext, ".py") == 0)
+        {
+            ck = new_key_group(ext, py_keys_temp);
+        }
+        else
+        {
+            printf("Unsupported filetype, defaulting to c...");
+            ck = new_key_group(ext, c_keys_temp);
+        }
+
+        // some file highlight
+        struct dodoFileHighlights* a_file_hl = dodo_gen_todo_data(a_file, ck, trie_root);
+        dodo_print_todos(a_file, fg->files[i], a_file_hl, line_pad);
+        dodo_ll_destroy(a_file_hl->list);
+        free(a_file_hl);
+        fclose(a_file);
+    }
+}
 
 // TODO: Accept piping
 int
 main(int    argc,
      char** argv)
 {
+    bool less = flag_bool(argc, argv, 'l');
+    printf("Flag %c: %d\n", 'l', less);
+    size_t extra_lines_arg = flag_uint(argc, argv, 'n', 4, nullptr);
+    printf("Flag %c: [%lu]\n", 'n', extra_lines_arg);
+    struct fileGroup* myfiles = collect_files(argc, argv);
+    /*
+     *TODO: For argument parsing we probably want to assume that
+     * everything with no - is a flag
+     */
+
+    /*
+     * TODO: Implement recursively search for files in a folder
+     * TODO: Implement argument for doc functions?
+     */
+
     // TODO: Config file and its integration
     // FIXME: Handling all files in a directory
     // FIXME: Argument handling
@@ -144,79 +254,25 @@ main(int    argc,
     /// Portable locale lolz
     setlocale(LC_ALL, "");
 
-    if (argc < 2)
-    {
-        printf("No file.\n");
-        exit(-1);
-    }
-    size_t extra_lines_arg = 4;
-    bool   less            = false;
-    // if we got 4 arguments check which one has the --less flag
-    if (argc == 4)
-    {
-        if (strcmp(argv[2], "--less") == 0 || strcmp(argv[2], "-l") == 0)
-        {
-            less = true;
-            // the next argument is the line number
-            extra_lines_arg = strtol(argv[3], nullptr, 10);
-        }
-        else if (strcmp(argv[3], "--less") == 0 || strcmp(argv[3], "-l") == 0)
-        {
-            less = true;
-            // the previous argument is the line number
-            extra_lines_arg = strtol(argv[2], nullptr, 10);
-        }
-    }
-    if (argc == 3)
-    {
-        if (strcmp(argv[2], "--less") == 0 || strcmp(argv[2], "-l") == 0)
-        {
-            less = true;
-        }
-        else
-        {
-            // the next argument is the line number
-            extra_lines_arg = strtol(argv[3], nullptr, 10);
-        }
-    }
-
     struct dodoTrieNode* cool_trie = dodo_make_trie();
     dodo_trie_add_keyword(cool_trie, "TODO", GOLD);
-    dodo_trie_add_keyword(cool_trie, "FIXME", REDRUM);
+    dodo_trie_add_keyword(cool_trie, "NOTE", NOTESGREEN);
     dodo_trie_add_keyword(cool_trie, "XXX", SCARYORANGE);
     dodo_trie_add_keyword(cool_trie, "BUG", REDRUM);
     dodo_trie_add_keyword(cool_trie, "THINK", THINKING);
+    dodo_trie_add_keyword(cool_trie, "FIXME", REDRUM);
+    dodo_trie_add_keyword(cool_trie, "REVIEW", SKY);
     dodo_trie_add_keyword(cool_trie, "WARNING", BEWAREOFDOGS);
     dodo_trie_add_keyword(cool_trie, "MORSEL", STEELBLUE);
-    dodo_trie_add_keyword(cool_trie, "NOTE", NOTESGREEN);
     dodo_trie_add_keyword(cool_trie, "STEP", BOLDTERM SKY);
+    dodo_trie_add_keyword(cool_trie, "REBUTTAL", SKY);
+    dodo_trie_add_keyword(cool_trie, "BUG?", PINKISH);
+
+    /*BUG?*/
+    /*BUG*/
+    /*BUG?*/
+
     // dodo_trie_add_keyword(cool_trie, "🧬");
-
-    FILE* test_file = fopen(argv[1], "r");
-    if (!test_file)
-    {
-        printf("Error [%i]: [%s] when opening file...\n", errno, strerror(errno));
-    }
-    char*              ext = strrchr(argv[1], '.');
-    struct commentKeys ck;
-    char*              c_keys_temp[]  = {"//", "/*", "*/", nullptr};
-    char*              py_keys_temp[] = {"#", "\"\"\"", "\"\"\"", nullptr};
-    // printf("ext: %s\n", ext);
-    if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 || strcmp(ext, ".cxx") == 0)
-    {
-        ck = new_key_group(ext, c_keys_temp);
-    }
-    else if (strcmp(ext, ".py") == 0)
-    {
-        ck = new_key_group(ext, py_keys_temp);
-    }
-    else
-    {
-        printf("Unsupported filetype");
-        exit(-1);
-    }
-
-    struct dodoFileHighlights* file_hl = dodo_gen_todo_data(test_file, ck, cool_trie);
 
     // If we pipe to less
 
@@ -246,7 +302,7 @@ main(int    argc,
             // STDOUT now refers to the write end
             dup2(pipe_fds[1], STDOUT_FILENO);
             close(pipe_fds[0]);
-            dodo_print_todos(test_file, argv[1], file_hl, extra_lines_arg);
+            gen_todo_from_filegroup(myfiles, cool_trie, extra_lines_arg);
         }
         else
         {
@@ -259,13 +315,10 @@ main(int    argc,
     }
     else
     {
-
-        dodo_print_todos(test_file, argv[1], file_hl, extra_lines_arg);
+        gen_todo_from_filegroup(myfiles, cool_trie, extra_lines_arg);
     }
-    dodo_ll_destroy(file_hl->list);
-    free(file_hl);
 
-    fclose(test_file);
+    destroy_filegroup(myfiles);
     dodo_trie_destroy(cool_trie);
     return 0;
 }

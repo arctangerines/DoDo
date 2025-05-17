@@ -16,13 +16,6 @@ struct hlInfo
     char*  hl_color;
 };
 
-/// Contains the actual highlight info for parsing
-struct dodoFileHighlights
-{
-    struct dodoList* list;
-    size_t           lines;
-};
-
 /*TODO: For linked list
  * - Add removing elements and keeping order
  * - Add inserting elements in between 2 elements
@@ -33,6 +26,13 @@ struct dodoList
 {
     struct hlInfo    hl;
     struct dodoList* next;
+};
+
+/// Contains the actual highlight info for parsing
+struct dodoFileHighlights
+{
+    size_t           lines;
+    struct dodoList* list;
 };
 
 /// Make an arbitrary element and return it, good for starting a linked list

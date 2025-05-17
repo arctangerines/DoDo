@@ -18,7 +18,7 @@ struct dodoTrieNode
     bool _children_alloced;
     /// Pointer(array) to a pointer (data) of all our children nodes
     struct dodoTrieNode** children;
-    /// Amount of nodes.
+    /// Amount of nodes directly below.
     size_t count;
     bool   word;
     /// End of the trie path

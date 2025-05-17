@@ -180,7 +180,19 @@ dodo_gen_todo_data(FILE*                f,
                     // cuz as it is, longer words are not working properly
                     if (a_node->word)
                     {
-                        // STEP: continue if lookahead finds another word
+                        // Continue if lookahead finds another word
+                        if (a_node->count != 0)
+                        {
+
+                            // quick search to see if theres a next one
+                            fpos_t temp_pos;
+                            fgetpos(f, &temp_pos);
+                            int r                       = fgetc(f);
+
+                            struct dodoTrieNode* b_node = dodo_trie_find_child(a_node, r);
+                            fsetpos(f, &temp_pos);
+                            if (b_node != nullptr) continue;
+                        }
                         keyword_found = true;
                         fsetpos(f, &pos);
                         keyword_color = a_node->color;
@@ -253,6 +265,7 @@ dodo_print_todos(FILE*                      f,
 {
     if (file_hl == nullptr)
     {
+        printf(FILEPATH "%s\n" CRESET, filename);
         printf("No ToDo's here\n");
         return;
     }
