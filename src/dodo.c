@@ -116,7 +116,6 @@ flag_uint(int    argc,
                 }
                 // give us the value at next starting point
                 digits = argv[i] + j + 1;
-                printf("Digits: [%s]\n", digits);
                 // i love strtol since it discards everything we need discarded here
                 return strtol(digits, nullptr, 10);
             }
@@ -143,7 +142,6 @@ collect_files(int    argc,
         if (argv[i][0] != '-')
         {
             idx_f = (size_t)i;
-            printf("argc: %d, idx_F:%ld", argc, idx_f);
             break;
         }
     }
@@ -161,8 +159,6 @@ collect_files(int    argc,
         file_list->files[j] = argv[j + idx_f];
     }
     // print file list
-    printf("\n-----------------------\n");
-    printf("Number of files: %lu", file_list->count);
     for (size_t k = 0; k < file_list->count; k++)
     {
         printf("%s\n", file_list->files[k]);
@@ -199,8 +195,9 @@ gen_todo_from_filegroup(struct fileGroup*    fg,
         FILE* a_file = fopen(fg->files[i], "r");
         if (!a_file)
         {
-            printf("Error [%i]: [%s] when opening file...\n", errno, strerror(errno));
-            exit(EXIT_FAILURE);
+            printf("Error [%i]: [%s] when opening file [%s]...\n", errno, strerror(errno),
+                   fg->files[i]);
+            break;
         }
         char* ext = strrchr(fg->files[i], '.');
         // printf("ext: %s\n", ext);
@@ -227,16 +224,13 @@ gen_todo_from_filegroup(struct fileGroup*    fg,
     }
 }
 
-// TODO: Accept piping
 int
 main(int    argc,
      char** argv)
 {
-    bool less = flag_bool(argc, argv, 'l');
-    printf("Flag %c: %d\n", 'l', less);
-    size_t extra_lines_arg = flag_uint(argc, argv, 'n', 4, nullptr);
-    printf("Flag %c: [%lu]\n", 'n', extra_lines_arg);
-    struct fileGroup* myfiles = collect_files(argc, argv);
+    bool              less            = flag_bool(argc, argv, 'l');
+    size_t            extra_lines_arg = flag_uint(argc, argv, 'n', 4, nullptr);
+    struct fileGroup* myfiles         = collect_files(argc, argv);
     /*
      *TODO: For argument parsing we probably want to assume that
      * everything with no - is a flag
