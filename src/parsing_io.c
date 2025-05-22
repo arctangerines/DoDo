@@ -237,15 +237,20 @@ dodo_gen_todo_data(FILE*                f,
 
         if (keyword_found && !(sl_comment || ml_comment))
         {
-            last          = (last == nullptr)
-                                ? (root = dodo_ll_new_element(
-                              hl_line_start, hl_cursor_start, hl_line_end, hl_cursor_end,
-                              hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
-                              hl_word_cursor_end, keyword_color))
-                                : dodo_ll_add_element(
-                             last, hl_line_start, hl_cursor_start, hl_line_end,
-                             hl_cursor_end, hl_word_line_start, hl_word_line_end,
-                             hl_word_cursor_start, hl_word_cursor_end, keyword_color);
+            if (last == nullptr)
+            {
+                last = root = dodo_ll_new_element(
+                    hl_line_start, hl_cursor_start, hl_line_end, hl_cursor_end,
+                    hl_word_line_start, hl_word_line_end, hl_word_cursor_start,
+                    hl_word_cursor_end, keyword_color);
+            }
+            else
+            {
+                last = dodo_ll_add_element(last, hl_line_start, hl_cursor_start,
+                                           hl_line_end, hl_cursor_end, hl_word_line_start,
+                                           hl_word_line_end, hl_word_cursor_start,
+                                           hl_word_cursor_end, keyword_color);
+            }
             keyword_found = false;
         }
     }
@@ -435,7 +440,7 @@ dodo_print_todos(FILE*                      f,
             }
             if (x == '\n' && line_no <= absolute_lines)
             {
-                printf("%*lu|  ", -3, line_no);
+                printf("%*lu │  ", -3, line_no);
                 // add by option
                 // printf("%*lu/%*lu|  ", -3, line_no, 3,
                 // absolute_lines);

@@ -23,7 +23,9 @@ ToDo manager
 # Short term goals
 
 * Dump TODOs (same as list?)
+* UTF-8 support, both in the trie and in printing text
 
 # Long term goals
 
 * Implement config file parser
+

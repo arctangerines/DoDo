@@ -228,17 +228,15 @@ int
 main(int    argc,
      char** argv)
 {
-    bool              less            = flag_bool(argc, argv, 'l');
-    size_t            extra_lines_arg = flag_uint(argc, argv, 'n', 4, nullptr);
-    struct fileGroup* myfiles         = collect_files(argc, argv);
-    /*
-     *TODO: For argument parsing we probably want to assume that
-     * everything with no - is a flag
-     */
+    /// flag for piping to less
+    bool              less         = flag_bool(argc, argv, 'l');
+    size_t            line_padding = flag_uint(argc, argv, 'n', 4, nullptr);
+    struct fileGroup* myfiles      = collect_files(argc, argv);
 
     /*
      * TODO: Implement recursively search for files in a folder
      * TODO: Implement argument for doc functions?
+     * TODO: Support multiple todos in 1 comment block
      */
 
     // TODO: Config file and its integration
@@ -261,14 +259,6 @@ main(int    argc,
     dodo_trie_add_keyword(cool_trie, "STEP", BOLDTERM SKY);
     dodo_trie_add_keyword(cool_trie, "REBUTTAL", SKY);
     dodo_trie_add_keyword(cool_trie, "BUG?", PINKISH);
-
-    /*BUG?*/
-    /*BUG*/
-    /*BUG?*/
-
-    // dodo_trie_add_keyword(cool_trie, "🧬");
-
-    // If we pipe to less
 
     if (less)
     {
@@ -296,7 +286,7 @@ main(int    argc,
             // STDOUT now refers to the write end
             dup2(pipe_fds[1], STDOUT_FILENO);
             close(pipe_fds[0]);
-            gen_todo_from_filegroup(myfiles, cool_trie, extra_lines_arg);
+            gen_todo_from_filegroup(myfiles, cool_trie, line_padding);
         }
         else
         {
@@ -309,9 +299,8 @@ main(int    argc,
     }
     else
     {
-        gen_todo_from_filegroup(myfiles, cool_trie, extra_lines_arg);
+        gen_todo_from_filegroup(myfiles, cool_trie, line_padding);
     }
-
     destroy_filegroup(myfiles);
     dodo_trie_destroy(cool_trie);
     return 0;
