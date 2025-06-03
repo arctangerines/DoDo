@@ -229,9 +229,14 @@ main(int    argc,
      char** argv)
 {
     /// flag for piping to less
-    bool              less         = flag_bool(argc, argv, 'l');
-    size_t            line_padding = flag_uint(argc, argv, 'n', 4, nullptr);
+    const bool        less         = flag_bool(argc, argv, 'l');
+    const size_t      line_padding = flag_uint(argc, argv, 'n', 4, nullptr);
     struct fileGroup* myfiles      = collect_files(argc, argv);
+    if (argc == 1)
+    {
+        printf("No file or options provided.\n");
+        exit(EXIT_FAILURE);
+    }
 
     /*
      * TODO: Implement recursively search for files in a folder
@@ -262,7 +267,22 @@ main(int    argc,
 
     if (less)
     {
-        // 0 is read and 1 is write end
+        // file descriptors are an abstraction for an I/O stream used by linux
+        // each file has a fd, theres a fd table used by the kernel
+        // the way we treat fd's depends on the context, for pipes its very straightforward
+        // but they are an opaque way to deal with I/O stream with the kernel
+        // FILE* is the same
+        // file descriptors have calls like open, read, lseek associated with them.
+        // more interesting is that processes get their own file descriptors,
+        // stdin and stdout represent the read and the write end respectively
+        // its canonical to know that stdin, stdout and stderr are fd that
+        // every program gets by default and they point to the io of the console
+        // you can extract info about a file descriptor with different functions like
+        // isatty(), for example 0 will be a tty because thats the stdin of our terminal
+        // when you split a process with fork(), you're giving each process a
+        // stdin/stdout/stderr
+
+        // 0 is the read and 1 is write end
         int pipe_fds[2];
         if (pipe(pipe_fds) == -1)
         {
@@ -272,7 +292,6 @@ main(int    argc,
         // for forking
         // we need this because we are trying to pipe different processes
         // from our program to less
-        // so the scond process will assume the role of less and first one will print
         pid_t pid;
 
         pid = fork();
@@ -283,18 +302,22 @@ main(int    argc,
         }
         if (pid == 0)
         {
-            // STDOUT now refers to the write end
+            // The fd for stdout, changes so its the same as the
+            // write end of the pipe aka
+            // printing to stdout sends to the pipe
+            // aka stdout and write end of the pipe are the same
             dup2(pipe_fds[1], STDOUT_FILENO);
             close(pipe_fds[0]);
             gen_todo_from_filegroup(myfiles, cool_trie, line_padding);
         }
         else
         {
-            // just like a pipe, stdin is the read end of the pipe
-            // less is going to read from stdin
+            // the fd for stdin, becomes the same as the read end
+            // of the pipe, so we can send to the pipe
+            // and it will be treated as stdin
             dup2(pipe_fds[0], STDIN_FILENO);
             close(pipe_fds[1]);
-            execlp("less", "less", NULL);
+            // execlp("less", "less", NULL);
         }
     }
     else

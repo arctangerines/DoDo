@@ -18,7 +18,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED on)
 
 #set(CMAKE_EXE_LINKER_FLAGS "-fsanitize=address -fsanitize=leak -fsanitize=undefined -static-libasan -fdiagnostics-color=always")
-set(CMAKE_C_FLAGS_DEBUG "-g -Wall -Wextra -Wpedantic -fdiagnostics-color=always")
+set(CMAKE_C_FLAGS_DEBUG "-g -Wall -Wextra -Wpedantic -fdiagnostics-color=always -save-temps")
 #set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fsanitize=leak -fsanitize=undefined")
 set(CMAKE_EXE_LINKER_FLAGS "-fdiagnostics-color=always")
 set(CMAKE_C_FLAGS_MINSIZEREL "-Os -s -Wall -Wextra -Wpedantic -fdiagnostics-color=always")
