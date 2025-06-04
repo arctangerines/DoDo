@@ -33,20 +33,20 @@ utf8_length(const uint8_t c)
         return 1;
     }
     // inverse of the bits
-    uint8_t m = 0b0100'0000;
-    // suppse c 0b1011'1010
-    // supps ~c 0b0100'0101
+    uint8_t m = 0b0010'0000;
+    // suppse c 0b1101'1010
+    // supps ~c 0b0010'0101
     // So what we are doing is basically comparing that witht he mask, we are
     // searching for the 0 that indicates the amount of bytes the utf8 char has
     // we do it with a 1 inversed
-    // 0b0100'0000
-    // 0b0100'0101
+    // 0b0010'0000
+    // 0b0010'0101
     //-----------
-    //=0b0100'0000
+    //=0b0010'0000
 
     uint8_t x = (~c) & m;
     // shift size IS the byte size, because
-    uint8_t shift_size = 1;
+    uint8_t shift_size = 2;
     // If it's not 1 byte, we start shifting to the right
     // until we find our 0 (which is a 1 when we !)
     while (x != m)
