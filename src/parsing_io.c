@@ -268,22 +268,29 @@ dodo_print_todos(FILE*                      f,
                  struct dodoFileHighlights* file_hl,
                  size_t                     extra_lines)
 {
+
     if (file_hl == nullptr)
     {
-        printf(FILEPATH "%s\n" CRESET, filename);
+        printf(FILEPATH "%s:" CRESET, filename);
+        printf(" ");
         printf("No ToDo's here\n");
         return;
     }
     if (file_hl->lines == 0)
     {
+        printf(FILEPATH "%s:" CRESET, filename);
+        printf(" ");
         printf("No lines read.\n");
         return;
     }
     if (file_hl->list == nullptr)
     {
+        printf(FILEPATH "%s:" CRESET, filename);
+        printf(" ");
         printf("Empty list of elements, hence, no ToDo's\n");
         return;
     }
+    printf("\n");
     int              x;
     struct dodoList* a_list         = file_hl->list;
     size_t           absolute_lines = file_hl->lines - 1;

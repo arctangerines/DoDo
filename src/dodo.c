@@ -159,10 +159,10 @@ collect_files(int    argc,
         file_list->files[j] = argv[j + idx_f];
     }
     // print file list
-    for (size_t k = 0; k < file_list->count; k++)
-    {
-        printf("%s\n", file_list->files[k]);
-    }
+    // for (size_t k = 0; k < file_list->count; k++)
+    // {
+    //     printf("%s\n", file_list->files[k]);
+    // }
     return file_list;
 }
 
